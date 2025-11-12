@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+
+// Import all components
 import ImageEditor from './components/ImageEditor';
 import ImageGenerator from './components/ImageGenerator';
 import ImageMixer from './components/ImageMixer';
@@ -14,6 +16,13 @@ import QuotifyGenerator from './components/QuotifyGenerator';
 import SpeakingVoiceover from './components/SpeakingVoiceover';
 import WorkTimer from './components/WorkTimer';
 import AnimatedTitle from './components/AnimatedTitle';
+import TextToVideo from './components/TextToVideo';
+import ImageToVideo from './components/ImageToVideo';
+import AnimationGenerator from './components/AnimationGenerator';
+import FaceSwapper from './components/FaceSwapper';
+import VoiceOverGenerator from './components/VoiceOverGenerator';
+import VideoTranslatedScript from './components/VideoTranslatedScript';
+import TextToVoiceover from './components/TextToVoiceover';
 
 // Define the structure of our tools
 const tools = {
@@ -23,20 +32,27 @@ const tools = {
     'script-outline': { label: 'បង្កើតគ្រោងរឿង', icon: '📝', component: ScriptOutlineGenerator },
     'movie-trailer': { label: 'Movie Trailer', icon: '🎟️', component: MovieTrailerGenerator },
     'translated-script': { label: 'Translated Script', icon: '🌐', component: TranslatedScriptGenerator },
-    'qualify': { label: 'Qualify', icon: '💬', component: QuotifyGenerator },
+    'quotify': { label: 'Quotify', icon: '💬', component: QuotifyGenerator },
   },
   image: {
     'generate': { label: 'Generate Image', icon: '✨', component: ImageGenerator },
     'edit': { label: 'Edit Image', icon: '🎨', component: ImageEditor },
     'image-mixer': { label: 'Image Mixer', icon: '➕', component: ImageMixer },
     'image-to-prompt': { label: 'Image to Prompt', icon: '📝', component: ImageToPrompt },
+    'face-swapper': { label: 'Face Swapper', icon: '😎', component: FaceSwapper },
   },
   video: {
+    'text-to-video': { label: 'Text to Video', icon: '📄➡️🎬', component: TextToVideo },
+    'image-to-video': { label: 'Image to Video', icon: '🖼️➡️🎬', component: ImageToVideo },
+    '3d-animation': { label: '3D Animation Tools', icon: '🧊', component: AnimationGenerator },
     'video-prompt': { label: 'Video Prompt', icon: '🎬', component: ImageToVideoPrompt },
+    'video-translated-script': { label: 'Video Translated Script', icon: '📹🌐', component: VideoTranslatedScript },
   },
   audio: {
     'podcast': { label: 'Podcast', icon: '🎙️', component: PodcastGenerator },
     'speaking-voiceover': { label: 'Speaking Voiceover', icon: '🎤', component: SpeakingVoiceover },
+    'text-to-voiceover': { label: 'Text to Voiceover', icon: '📄➡️🔊', component: TextToVoiceover },
+    'voiceover-generator': { label: 'Voiceover Generator', icon: '🗣️', component: VoiceOverGenerator },
   },
 };
 
