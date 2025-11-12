@@ -1,10 +1,10 @@
 import React, { useState, useCallback } from 'react';
-import { generateImage } from '../services/geminiService';
-import ImagePanel from './ImagePanel';
-import ControlPanel from './ControlPanel';
-import StyleSelector from './StyleSelector';
-import { styles } from './styles';
-import AspectRatioSelector, { AspectRatio } from './AspectRatioSelector';
+import { generateImage } from '../services/geminiService.ts';
+import ImagePanel from './ImagePanel.tsx';
+import ControlPanel from './ControlPanel.tsx';
+import StyleSelector from './StyleSelector.tsx';
+import { styles } from './styles.ts';
+import AspectRatioSelector, { AspectRatio } from './AspectRatioSelector.tsx';
 
 const samplePrompts = [
     'A majestic lion wearing a crown, cinematic lighting.',

@@ -1,28 +1,29 @@
 import React, { useState } from 'react';
 
 // Import all components
-import ImageEditor from './components/ImageEditor';
-import ImageGenerator from './components/ImageGenerator';
-import ImageMixer from './components/ImageMixer';
-import ImageToPrompt from './components/ImageToPrompt';
-import ImageToVideoPrompt from './components/ImageToVideoPrompt';
-import StoryGenerator from './components/StoryGenerator';
-import MovieTrailerGenerator from './components/MovieTrailerGenerator';
-import StoryWriter from './components/StoryWriter';
-import ScriptOutlineGenerator from './components/ScriptOutlineGenerator';
-import PodcastGenerator from './components/PodcastGenerator';
-import TranslatedScriptGenerator from './components/TranslatedScriptGenerator';
-import QuotifyGenerator from './components/QuotifyGenerator';
-import SpeakingVoiceover from './components/SpeakingVoiceover';
-import WorkTimer from './components/WorkTimer';
-import AnimatedTitle from './components/AnimatedTitle';
-import TextToVideo from './components/TextToVideo';
-import ImageToVideo from './components/ImageToVideo';
-import AnimationGenerator from './components/AnimationGenerator';
-import FaceSwapper from './components/FaceSwapper';
-import VoiceOverGenerator from './components/VoiceOverGenerator';
-import VideoTranslatedScript from './components/VideoTranslatedScript';
-import TextToVoiceover from './components/TextToVoiceover';
+import ImageEditor from './components/ImageEditor.tsx';
+import ImageGenerator from './components/ImageGenerator.tsx';
+// FIX: Corrected import to use named export for ImageMixer
+import ImageMixer from './components/ImageMixer.tsx';
+import ImageToPrompt from './components/ImageToPrompt.tsx';
+import ImageToVideoPrompt from './components/ImageToVideoPrompt.tsx';
+import StoryGenerator from './components/StoryGenerator.tsx';
+import MovieTrailerGenerator from './components/MovieTrailerGenerator.tsx';
+import StoryWriter from './components/StoryWriter.tsx';
+import ScriptOutlineGenerator from './components/ScriptOutlineGenerator.tsx';
+import PodcastGenerator from './components/PodcastGenerator.tsx';
+import TranslatedScriptGenerator from './components/TranslatedScriptGenerator.tsx';
+import QuotifyGenerator from './components/QuotifyGenerator.tsx';
+import SpeakingVoiceover from './components/SpeakingVoiceover.tsx';
+import WorkTimer from './components/WorkTimer.tsx';
+import AnimatedTitle from './components/AnimatedTitle.tsx';
+import TextToVideo from './components/TextToVideo.tsx';
+import ImageToVideo from './components/ImageToVideo.tsx';
+import AnimationGenerator from './components/AnimationGenerator.tsx';
+import FaceSwapper from './components/FaceSwapper.tsx';
+import VoiceOverGenerator from './components/VoiceOverGenerator.tsx';
+import VideoTranslatedScript from './components/VideoTranslatedScript.tsx';
+import TextToVoiceover from './components/TextToVoiceover.tsx';
 
 // Define the structure of our tools
 const tools = {

@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { editImage } from '../services/geminiService';
-import ImagePanel from './ImagePanel';
-import ControlPanel from './ControlPanel';
+import { editImage } from '../services/geminiService.ts';
+import ImagePanel from './ImagePanel.tsx';
+import ControlPanel from './ControlPanel.tsx';
 
 interface FileData {
   base64: string;

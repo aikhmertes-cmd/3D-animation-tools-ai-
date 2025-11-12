@@ -1,7 +1,8 @@
+// FIX: Completed the ImageMixer component and added a default export to resolve the module import error.
 import React, { useState, useCallback } from 'react';
-import { mixImages } from '../services/geminiService';
-import ImagePanel from './ImagePanel';
-import ControlPanel from './ControlPanel';
+import { mixImages } from '../services/geminiService.ts';
+import ImagePanel from './ImagePanel.tsx';
+import ControlPanel from './ControlPanel.tsx';
 
 interface FileData {
   base64: string;
@@ -107,26 +108,22 @@ const ImageMixer: React.FC = () => {
   return (
     <div className="w-full max-w-7xl mx-auto flex flex-col h-full">
       <ClearProjectButton onClick={handleClear} />
-      <div className="flex-grow flex flex-col gap-4 md:gap-8 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
-            <ImagePanel
-            title="Image A"
-            imageDataUrl={fileA ? `data:${fileA.mimeType};base64,${fileA.base64}` : null}
-            onFileChange={handleFileChange(setFileA)}
-            />
-            <ImagePanel
-            title="Image B"
-            imageDataUrl={fileB ? `data:${fileB.mimeType};base64,${fileB.base64}` : null}
-            onFileChange={handleFileChange(setFileB)}
-            />
-        </div>
-        <div className="w-full">
-            <ImagePanel
-                title="Mixed Image"
-                imageDataUrl={mixedImage}
-                isLoading={isLoading}
-            />
-        </div>
+      <div className="flex-grow grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 mb-4">
+        <ImagePanel
+          title="Image A"
+          imageDataUrl={fileA ? `data:${fileA.mimeType};base64,${fileA.base64}` : null}
+          onFileChange={handleFileChange(setFileA)}
+        />
+        <ImagePanel
+          title="Image B"
+          imageDataUrl={fileB ? `data:${fileB.mimeType};base64,${fileB.base64}` : null}
+          onFileChange={handleFileChange(setFileB)}
+        />
+        <ImagePanel
+          title="Mixed Result"
+          imageDataUrl={mixedImage}
+          isLoading={isLoading}
+        />
       </div>
        {error && (
         <div className="my-2 p-3 text-center bg-red-900/50 border border-red-700 text-red-300 rounded-lg">
@@ -139,7 +136,7 @@ const ImageMixer: React.FC = () => {
         onSubmit={handleSubmit}
         isLoading={isLoading}
         isReadyToSubmit={!!fileA && !!fileB}
-        placeholder="Combine these to make..."
+        placeholder="Describe how to mix the images..."
         isEditedImageAvailable={!!mixedImage}
         onDownload={handleDownload}
         onGeneratePrompt={handleGeneratePrompt}

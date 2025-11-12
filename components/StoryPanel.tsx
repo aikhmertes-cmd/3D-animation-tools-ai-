@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { StoryScene, generateNarration, generateDialog } from '../services/geminiService';
+import { StoryScene, generateNarration, generateDialog } from '../services/geminiService.ts';
 
 // --- Icons ---
 const StoryIcon: React.FC = () => (

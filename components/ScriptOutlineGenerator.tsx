@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { generateScriptOutline, ScriptOutline } from '../services/geminiService';
+import { generateScriptOutline, ScriptOutline } from '../services/geminiService.ts';
 
 const uiText = {
   en: {

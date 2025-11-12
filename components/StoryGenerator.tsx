@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { generateStory, StoryScene, analyzeStoryForCharacters, generateStoryIdeas, StoryIdea, Character as ServiceCharacter, generateCharacters } from '../services/geminiService';
-import StoryPanel from './StoryPanel';
+import { generateStory, StoryScene, analyzeStoryForCharacters, generateStoryIdeas, StoryIdea, Character as ServiceCharacter, generateCharacters } from '../services/geminiService.ts';
+import StoryPanel from './StoryPanel.tsx';
 
 const storyStyles: { name: string, value: string }[] = [
     { name: '2D Watercolor', value: 'animation 2D watercolor illustration style' },

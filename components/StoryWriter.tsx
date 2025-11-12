@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { assistWriting, generateVoiceover, generateImageForScene, extendStoryWithImage } from '../services/geminiService';
+import { assistWriting, generateVoiceover, generateImageForScene, extendStoryWithImage } from '../services/geminiService.ts';
 
 type StoryGenre = 'Fantasy' | 'Sci-Fi' | 'Mystery' | 'Romance' | 'Historical' | 'Non-Fiction';
 type StoryTone = 'Suspenseful' | 'Humorous' | 'Dramatic' | 'Formal' | 'Casual' | 'Inspiring';

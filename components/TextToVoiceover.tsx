@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 // FIX: Renamed 'generateTextToVoiceover' to 'generateVoiceover' to match the exported function name from geminiService.
-import { generateVoiceover } from '../services/geminiService';
-import type { PrebuiltVoice } from '../services/geminiService';
+import { generateVoiceover } from '../services/geminiService.ts';
+import type { PrebuiltVoice } from '../services/geminiService.ts';
 
 type VoiceProfile = 'Male Adult' | 'Female Adult' | 'Male Youth' | 'Female Youth';
 

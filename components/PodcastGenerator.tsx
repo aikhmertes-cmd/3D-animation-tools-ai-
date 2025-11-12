@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 // FIX: Renamed 'generateTextToVoiceover' to 'generateVoiceover' to match the exported function name from geminiService.
-import { generatePodcastScript, generateVoiceover, generateDialog, generateImage } from '../services/geminiService';
-import type { PrebuiltVoice, PodcastCharacter, Dialog } from '../services/geminiService';
+import { generatePodcastScript, generateVoiceover, generateDialog, generateImage } from '../services/geminiService.ts';
+import type { PrebuiltVoice, PodcastCharacter, Dialog } from '../services/geminiService.ts';
 
 // --- Audio Utilities ---
 const decode = (base64: string): Uint8Array => {

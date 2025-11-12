@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { generateVideo } from '../services/geminiService';
-import VideoPanel from './VideoPanel';
-import VideoOptionsSelector, { VideoAspectRatio, Resolution } from './VideoOptionsSelector';
+import { generateVideo } from '../services/geminiService.ts';
+import VideoPanel from './VideoPanel.tsx';
+import VideoOptionsSelector, { VideoAspectRatio, Resolution } from './VideoOptionsSelector.tsx';
 
 const ClearProjectButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
     <div className="w-full flex justify-end mb-4">

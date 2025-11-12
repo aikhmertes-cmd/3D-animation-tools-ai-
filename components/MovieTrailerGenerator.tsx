@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { generateTrailerScript } from '../services/geminiService';
-import type { StoryScene } from '../services/geminiService';
-import StoryPanel from './StoryPanel';
+import { generateTrailerScript } from '../services/geminiService.ts';
+import type { StoryScene } from '../services/geminiService.ts';
+import StoryPanel from './StoryPanel.tsx';
 
 type TrailerGenre = 'Action' | 'Comedy' | 'Drama' | 'Sci-Fi' | 'Horror' | 'Thriller' | 'Romance' | 'Fantasy';
 type TrailerTone = 'Epic' | 'Humorous' | 'Tense' | 'Emotional' | 'Mysterious' | 'Inspiring';

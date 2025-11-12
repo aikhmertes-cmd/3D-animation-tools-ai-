@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { generatePromptFromImage } from '../services/geminiService';
-import ImagePanel from './ImagePanel';
-import PromptPanel from './PromptPanel';
+import { generatePromptFromImage } from '../services/geminiService.ts';
+import ImagePanel from './ImagePanel.tsx';
+import PromptPanel from './PromptPanel.tsx';
 
 interface FileData {
   base64: string;

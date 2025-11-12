@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Style } from './styles';
+import type { Style } from './styles.ts';
 
 interface StyleSelectorProps {
   styles: Style[];

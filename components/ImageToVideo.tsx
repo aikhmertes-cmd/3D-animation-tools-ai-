@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { generateVideo } from '../services/geminiService';
-import ImagePanel from './ImagePanel';
-import VideoPanel from './VideoPanel';
-import VideoOptionsSelector, { VideoAspectRatio, Resolution } from './VideoOptionsSelector';
+import { generateVideo } from '../services/geminiService.ts';
+import ImagePanel from './ImagePanel.tsx';
+import VideoPanel from './VideoPanel.tsx';
+import VideoOptionsSelector, { VideoAspectRatio, Resolution } from './VideoOptionsSelector.tsx';
 
 interface FileData {
   base64: string;
