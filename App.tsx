@@ -141,7 +141,9 @@ const App: React.FC = () => {
 
         {/* Secondary Tool Tabs */}
         <div className="mb-6 w-full max-w-7xl flex flex-wrap justify-center gap-3 p-2 bg-gray-800 rounded-lg border border-gray-700" role="tablist" aria-label="AI Media Tools">
-            {Object.entries(tools[activeCategory]).map(([toolKey, toolDetails]) => (
+            {/* FIX: Cast `tools[activeCategory]` to a known type to help TypeScript infer the correct type for `toolDetails`. */}
+            {/* The `toolDetails` object was being inferred as `unknown` because `tools[activeCategory]` is a union of different tool objects. */}
+            {Object.entries(tools[activeCategory] as Record<string, { label: string; icon: string; component: React.FC; }>).map(([toolKey, toolDetails]) => (
                 <button
                     key={toolKey}
                     role="tab"
