@@ -1,15 +1,44 @@
 // FIX: Removed `Dialog as ApiDialog` from import as it's not an exported member.
 import { GoogleGenAI, Modality, GenerateContentResponse, Type } from "@google/genai";
 
-const API_KEY = process.env.API_KEY;
+// Store the key and the ai instance in a closure to act as a singleton
+const state = {
+    apiKey: null as string | null,
+    ai: null as GoogleGenAI | null,
+};
 
-if (!API_KEY) {
-    // In a real app, you might want to handle this more gracefully.
-    // For this environment, we assume API_KEY is always present.
-    console.warn("API_KEY is not set in environment variables.");
+async function getApiKey(): Promise<string> {
+    if (state.apiKey) {
+        return state.apiKey;
+    }
+    try {
+        const response = await fetch('/.netlify/functions/getApiKey');
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to fetch API key: ${response.status} ${errorText}`);
+        }
+        const { apiKey } = await response.json();
+        if (!apiKey) {
+            throw new Error('API key is missing from serverless function response.');
+        }
+        state.apiKey = apiKey;
+        return apiKey;
+    } catch (e) {
+        console.error("Could not fetch API key from Netlify function.", e);
+        throw new Error("Could not retrieve API key. Ensure the application is deployed on Netlify with the API_KEY environment variable set.");
+    }
 }
 
-const ai = new GoogleGenAI({ apiKey: API_KEY! });
+async function getAi(): Promise<GoogleGenAI> {
+    if (state.ai) {
+        return state.ai;
+    }
+    const apiKey = await getApiKey();
+    const ai = new GoogleGenAI({ apiKey });
+    state.ai = ai;
+    return ai;
+}
+
 const imageEditModel = 'gemini-2.5-flash-image';
 const imageGenerateModel = 'imagen-4.0-generate-001';
 const videoGenerateModel = 'veo-3.1-fast-generate-preview';
@@ -37,6 +66,7 @@ const handleImageResponse = (response: GenerateContentResponse): string => {
 
 export const editImage = async (base64ImageData: string, mimeType: string, prompt: string): Promise<string> => {
     try {
+        const ai = await getAi();
         const response: GenerateContentResponse = await ai.models.generateContent({
             model: imageEditModel,
             contents: {
@@ -71,6 +101,7 @@ export const mixImages = async (
     prompt: string
 ): Promise<string> => {
     try {
+        const ai = await getAi();
         const response: GenerateContentResponse = await ai.models.generateContent({
             model: imageEditModel, // 'gemini-2.5-flash-image'
             contents: {
@@ -109,6 +140,7 @@ type ImageAspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
 
 export const generateImage = async (prompt: string, aspectRatio: ImageAspectRatio): Promise<string> => {
      try {
+        const ai = await getAi();
         const response = await ai.models.generateImages({
             model: imageGenerateModel,
             prompt: prompt,
@@ -143,6 +175,7 @@ export const generateImageForScene = async (prompt: string): Promise<string> => 
 
 export const generatePromptFromImage = async (base64ImageData: string, mimeType: string): Promise<string> => {
     try {
+        const ai = await getAi();
         const response = await ai.models.generateContent({
             model: textModel,
             contents: {
@@ -175,6 +208,7 @@ export const generatePromptFromImage = async (base64ImageData: string, mimeType:
 
 export const generateVideoPromptFromImage = async (base64ImageData: string, mimeType: string): Promise<string> => {
     try {
+        const ai = await getAi();
         const response = await ai.models.generateContent({
             model: textModel,
             contents: {
@@ -219,8 +253,9 @@ interface VideoGenerationOptions {
 }
 
 export const generateVideo = async (options: VideoGenerationOptions): Promise<Blob> => {
+    const API_KEY = await getApiKey();
     // Per guideline: Create a new instance right before making an API call
-    const videoAI = new GoogleGenAI({ apiKey: API_KEY! });
+    const videoAI = new GoogleGenAI({ apiKey: API_KEY });
 
     try {
         const payload: any = {
@@ -418,6 +453,7 @@ export const generateStory = async (options: StoryOptions): Promise<StoryScene[]
     }
 
     try {
+        const ai = await getAi();
         const response = await ai.models.generateContent({
             model: storyModel,
             contents: userPrompt,
@@ -525,6 +561,7 @@ export const generateTrailerScript = async (options: TrailerScriptOptions): Prom
     };
 
     try {
+        const ai = await getAi();
         const response = await ai.models.generateContent({
             model: storyModel, // Using gemini-2.5-pro for high quality creative writing
             contents: userPrompt,
@@ -563,6 +600,7 @@ export interface AnalyzedCharacter {
 
 export const analyzeStoryForCharacters = async (storyText: string): Promise<AnalyzedCharacter[]> => {
     try {
+        const ai = await getAi();
         const response = await ai.models.generateContent({
             model: textModel, // Use the faster model for analysis
             contents: `Analyze the following story text. Identify the main characters and infer their gender. Return the result as a JSON array of objects, where each object has a 'name' and a 'gender' key. For example: [{"name": "Alice", "gender": "Female"}]. Only return the JSON array. Story: """${storyText}"""`,
@@ -609,6 +647,7 @@ export const generateCharacters = async (topic: string, characterCount: number):
     };
 
     try {
+        const ai = await getAi();
         const response = await ai.models.generateContent({
             model: storyModel, // Use gemini-2.5-pro for creativity
             contents: userPrompt,
@@ -655,6 +694,7 @@ export const generateStoryIdeas = async (storyType: string, smartThinking: boole
     }
     
     try {
+        const ai = await getAi();
         const response = await ai.models.generateContent({
             model: modelToUse,
             contents: `Generate 5 unique and creative short story ideas for children. The theme for the stories is "${storyType}". Each story idea should include a title and a one-paragraph summary. Return the result as a valid JSON array of objects, where each object has a "title" and a "summary" key. Do not include any other text or markdown.`,
@@ -673,6 +713,7 @@ export const generateStoryIdeas = async (storyType: string, smartThinking: boole
 
 export const generateNarration = async (text: string): Promise<string> => {
     try {
+        const ai = await getAi();
         const response = await ai.models.generateContent({
             model: ttsModel,
             contents: [{ parts: [{ text: `Say with a clear, narrative tone: ${text}` }] }],
@@ -701,6 +742,7 @@ export type PrebuiltVoice = 'Kore' | 'Puck' | 'Charon' | 'Fenrir' | 'Zephyr';
 export const generateVoiceover = async (text: string, language: string, voiceName: PrebuiltVoice = 'Kore', emotion: string = 'in a clear, narrative tone'): Promise<string> => {
     const prompt = `Say ${emotion} in ${language}: ${text}`;
     try {
+        const ai = await getAi();
         const response = await ai.models.generateContent({
             model: ttsModel,
             contents: [{ parts: [{ text: prompt }] }],
@@ -749,6 +791,7 @@ export const generateDialog = async (dialog: Dialog[], speakerConfigs: SpeakerCo
                    dialog.map(d => `${d.character}: ${d.line}`).join('\n');
     
     try {
+        const ai = await getAi();
         const response = await ai.models.generateContent({
             model: ttsModel,
             contents: [{ parts: [{ text: prompt }] }],
@@ -814,6 +857,7 @@ export const assistWriting = async (options: WritingAssistanceOptions): Promise<
     }
 
     try {
+        const ai = await getAi();
         const response = await ai.models.generateContent({
             model: textModel, // gemini-2.5-flash
             contents: userPrompt,
@@ -845,6 +889,7 @@ export const extendStoryWithImage = async (storyContext: string, imageBase64: st
     Your response should start directly with the new scene(s), formatted with "SCENE X" headers. Continue the narrative flow.`;
 
     try {
+        const ai = await getAi();
         const response = await ai.models.generateContent({
             model: textModel, // gemini-2.5-flash
             contents: {
@@ -915,6 +960,7 @@ export const generateScriptOutline = async (story: string, prompt: string, langu
     };
 
     try {
+        const ai = await getAi();
         const response = await ai.models.generateContent({
             model: storyModel, // gemini-2.5-pro for better structure and understanding
             contents: userPrompt,
@@ -960,6 +1006,7 @@ export const generatePodcastScript = async (options: PodcastOptions): Promise<st
 
     if (podcastType === 'solo') {
         const userPrompt = `Generate a short, conversational solo podcast script for a host named "${characters[0].name}" about the topic: "${topic}". The script should be natural and engaging. Do not include character names or headings, just the narration text. ${langPrompt} ${durationPrompt} ${stylePrompt}`;
+        const ai = await getAi();
         const response = await ai.models.generateContent({
             model: storyModel,
             contents: userPrompt,
@@ -991,7 +1038,8 @@ export const generatePodcastScript = async (options: PodcastOptions): Promise<st
         } else {
             userPrompt = `Generate a short podcast conversation script between ${characterNames} about the topic: "${topic}". ${durationPrompt} ${stylePrompt}`;
         }
-
+        
+        const ai = await getAi();
         const response = await ai.models.generateContent({
             model: storyModel,
             contents: userPrompt,
@@ -1022,6 +1070,7 @@ export const translateText = async (text: string, sourceLang: string, targetLang
     const userPrompt = `Translate the following text from ${sourceLang} to ${targetLang}:\n\n"""\n${text}\n"""`;
 
     try {
+        const ai = await getAi();
         const response = await ai.models.generateContent({
             model: textModel, // gemini-2.5-flash
             contents: userPrompt,
@@ -1065,6 +1114,7 @@ export const generateQuotifyPrompts = async (speaker: string, numPrompts: number
     };
 
     try {
+        const ai = await getAi();
         const response = await ai.models.generateContent({
             model: storyModel, // gemini-2.5-pro for creativity
             contents: userPrompt,
@@ -1102,6 +1152,7 @@ export const enhanceQuotifyPrompts = async (prompts: string[]): Promise<string[]
     };
 
     try {
+        const ai = await getAi();
         const response = await ai.models.generateContent({
             model: storyModel, // gemini-2.5-pro for high creativity
             contents: userPrompt,

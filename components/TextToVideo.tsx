@@ -23,11 +23,6 @@ const TextToVideo: React.FC = () => {
     const [resolution, setResolution] = useState<Resolution>('720p');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [isKeySelected, setIsKeySelected] = useState(false);
-
-    useEffect(() => {
-        window.aistudio?.hasSelectedApiKey().then(setIsKeySelected);
-    }, []);
     
     // Clean up blob URL to prevent memory leaks
     useEffect(() => {
@@ -37,14 +32,6 @@ const TextToVideo: React.FC = () => {
             }
         };
     }, [videoBlobUrl]);
-
-    const handleSelectKey = async () => {
-        if(window.aistudio) {
-            await window.aistudio.openSelectKey();
-            setIsKeySelected(true); // Assume success to improve UX
-            setError(null);
-        }
-    };
 
     const handleSubmit = useCallback(async () => {
         if (!prompt.trim()) {
@@ -64,9 +51,6 @@ const TextToVideo: React.FC = () => {
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
             setError(errorMessage);
-            if (errorMessage.includes('not found') || errorMessage.includes('API key')) {
-                setIsKeySelected(false);
-            }
             console.error(err);
         } finally {
             setIsLoading(false);
@@ -83,29 +67,6 @@ const TextToVideo: React.FC = () => {
         setAspectRatio('16:9');
         setResolution('720p');
     };
-
-    if (!isKeySelected) {
-        return (
-            <div className="w-full max-w-2xl mx-auto text-center bg-gray-800/50 p-8 rounded-lg border border-gray-700">
-                <h2 className="text-2xl font-bold text-cyan-400 mb-4">API Key Required</h2>
-                <p className="text-gray-300 mb-6">Video generation with Veo requires a dedicated API key. Please select one to proceed. This is a mandatory step before accessing this feature.</p>
-                <button
-                    onClick={handleSelectKey}
-                    className="inline-flex items-center justify-center px-6 py-3 font-semibold text-white bg-gradient-to-r from-purple-500 to-cyan-500 rounded-lg shadow-lg border-b-4 border-purple-700 hover:from-purple-600 hover:to-cyan-600 transform transition-all duration-200 active:translate-y-0.5 active:border-b-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-cyan-500"
-                >
-                    <span className="text-xl mr-2">🔑</span>
-                    Select API Key
-                </button>
-                 {error && <p className="text-red-400 mt-4">{error}</p>}
-                 <p className="text-sm text-gray-500 mt-4">
-                    For more information on billing, please visit the{' '}
-                    <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">
-                        official documentation
-                    </a>.
-                </p>
-            </div>
-        );
-    }
 
     return (
         <div className="w-full max-w-5xl mx-auto flex flex-col items-center">
