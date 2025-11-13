@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 
 // Import all components
@@ -24,6 +25,9 @@ import FaceSwapper from './components/FaceSwapper.tsx';
 import VoiceOverGenerator from './components/VoiceOverGenerator.tsx';
 import VideoTranslatedScript from './components/VideoTranslatedScript.tsx';
 import TextToVoiceover from './components/TextToVoiceover.tsx';
+import { useAuth } from './components/AuthContext.tsx';
+import LoginButton from './components/LoginButton.tsx';
+import UserProfile from './components/UserProfile.tsx';
 
 // Define the structure of our tools
 const tools = {
@@ -71,6 +75,7 @@ const mainCategories: { key: MainCategory, label: string, icon: string }[] = [
 const App: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<MainCategory>('writing');
   const [activeTool, setActiveTool] = useState<string>('story-writer');
+  const { user } = useAuth();
 
   const handleCategoryChange = (category: MainCategory) => {
     setActiveCategory(category);
@@ -111,7 +116,7 @@ const App: React.FC = () => {
             <AnimatedTitle title="Sal tools mmo : media Ai Pro V.1" />
             <p className="text-sm text-gray-400 mt-1">Create images, videos, and entire stories with the power of AI.</p>
         </div>
-         <div className="flex items-center gap-4 flex-wrap justify-center sm:justify-end">
+         <div className="flex items-center gap-6 flex-wrap justify-center sm:justify-end">
             <div className="flex items-center gap-2">
                 <a
                     href="https://t.me/SEYPISAL"
@@ -137,6 +142,8 @@ const App: React.FC = () => {
                 </a>
             </div>
             <WorkTimer />
+            <div className="h-8 w-px bg-gray-600 hidden sm:block"></div>
+            {user ? <UserProfile /> : <LoginButton />}
         </div>
       </header>
       <main className="flex-grow flex flex-col items-center p-4 w-full">
