@@ -1,28 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { generateStory, StoryScene, analyzeStoryForCharacters, generateStoryIdeas, StoryIdea, Character as ServiceCharacter, generateCharacters } from '../services/geminiService.ts';
 import StoryPanel from './StoryPanel.tsx';
-
-const storyStyles: { name: string, value: string }[] = [
-    { name: '2D Watercolor', value: 'animation 2D watercolor illustration style' },
-    { name: 'Pixar-like 3D', value: 'Pixar-like cinematic 3D' },
-    { name: 'Bouncy Physics', value: '3D, bouncy and soft physics' },
-    { name: 'Miniature World', value: '3D, miniature toy world' },
-    { name: 'Low-Poly 3D', value: 'Low-poly 3D animation' },
-    { name: 'Paper Cutout', value: '2D, paper cutout stop-motion' },
-    { name: 'Realistic Vehicles', value: '3D, realistic vehicle models' },
-    { name: 'Bold 2D Shapes', value: '2D, simple shapes and bold colors' },
-    { name: 'Cozy Bedtime', value: '3D, warm and cozy (bedtime story)' },
-    { name: 'Neon Sci-Fi', value: '3D, neon and glowing (sci-fi/magic)' },
-    { name: 'Plastic Lego', value: '3D, shiny plastic (like Lego)' },
-    { name: 'Cute Furry', value: 'Cute 3D, furry textures' },
-    { name: 'Pastel Toybox', value: '3D cartoon, toybox pastel' },
-    { name: 'Anime', value: 'anime style, vibrant colors, detailed characters, dynamic action scenes' },
-    { name: 'Ghibli Style', value: 'Ghibli studio style, hand-drawn aesthetic, lush natural landscapes, whimsical and heartwarming feel' },
-    { name: 'Pixel Art', value: 'pixel art style, 16-bit, retro video game aesthetic' },
-    { name: 'Claymation', value: 'claymation stop-motion style, handcrafted look, visible fingerprints and textures' },
-    { name: 'Cyberpunk', value: 'cyberpunk style, neon-drenched cityscapes, futuristic technology, gritty and dystopian mood' },
-    { name: 'Glitch / Coder', value: 'glitch art aesthetic, datamoshing, digital errors, green and black terminal style' },
-];
+import { styles } from './styles.ts';
 
 type GeneratorMode = 'new' | 'paste' | 'ideas';
 type InnerTab = 'characters' | 'script';
@@ -68,7 +47,7 @@ const StoryGenerator: React.FC = () => {
     const [smartThinking, setSmartThinking] = useState(true);
     const [pastedStory, setPastedStory] = useState('');
     const [storyType, setStoryType] = useState('');
-    const [style, setStyle] = useState<string>('Pixar-like cinematic 3D');
+    const [style, setStyle] = useState<string>(styles[2].value); // Default to 3D Cartoon
     const [sceneCount, setSceneCount] = useState(10);
     const [characters, setCharacters] = useState<Character[]>([
         { id: Date.now(), name: '', gender: 'Female', age: '', description: '' }
@@ -84,13 +63,19 @@ const StoryGenerator: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     const inputFieldClasses = "bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-cyan-500 focus:border-cyan-500 block w-full p-2.5 placeholder-gray-400";
-    const genderFocusOptions = ['Any', 'Female Protagonist', 'Male Protagonist', 'Female-led Ensemble', 'Male-led Ensemble', 'Balanced Ensemble'];
+    const genderFocusOptions = ['Any', 'Female Protagonist', 'Male Protagonist', 'Action Heroine', 'Female-led Ensemble', 'Male-led Ensemble', 'Balanced Ensemble'];
 
     const handleSceneCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const count = parseInt(e.target.value, 10);
-        if (count < 1) setSceneCount(1);
-        else if (count > 100) setSceneCount(100);
-        else setSceneCount(count);
+        if (isNaN(count)) {
+            setSceneCount(1); // Default to 1 if input is not a number
+        } else if (count < 1) {
+            setSceneCount(1);
+        } else if (count > 100) {
+            setSceneCount(100);
+        } else {
+            setSceneCount(count);
+        }
     };
     
     const handleClear = () => {
@@ -343,19 +328,50 @@ const StoryGenerator: React.FC = () => {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-semibold mb-2 text-gray-300">Style</label>
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                                                {storyStyles.map(s => (
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                                {styles.map(s => (
                                                     <button 
                                                         key={s.name} 
                                                         onClick={() => setStyle(s.value)} 
-                                                        className={`flex items-center justify-center text-center h-20 p-2 text-sm font-semibold rounded-lg transition w-full transform ${style === s.value ? 'bg-purple-500 text-white scale-105 shadow-lg' : 'bg-gray-700 text-gray-300 hover:bg-gray-600 active:scale-95'}`}
+                                                        className={`flex items-center justify-center text-center h-20 p-2 text-xs font-semibold rounded-lg transition w-full transform ${style === s.value ? 'bg-purple-500 text-white scale-105 shadow-lg' : 'bg-gray-700 text-gray-300 hover:bg-gray-600 active:scale-95'}`}
                                                     >
                                                         {s.name}
                                                     </button>
                                                 ))}
                                             </div>
                                         </div>
-                                        <div><label htmlFor="scenes" className="block text-sm font-semibold mb-2 text-gray-300">Number of Scenes</label><input type="number" id="scenes" value={sceneCount} onChange={handleSceneCountChange} className={inputFieldClasses} min="1" max="100"/><p className="mt-2 text-xs text-gray-400">Max 100.</p></div>
+                                        <div>
+                                            <label htmlFor="scenes" className="block text-sm font-semibold mb-2 text-gray-300">Number of Scenes</label>
+                                            <div className="relative flex items-center">
+                                                <button
+                                                    onClick={() => setSceneCount(prev => Math.max(1, prev - 1))}
+                                                    className="absolute left-0 top-0 bottom-0 px-3 text-lg font-bold text-gray-400 hover:text-white bg-gray-700/50 rounded-l-lg disabled:opacity-50"
+                                                    aria-label="Decrease scene count"
+                                                    disabled={isLoading}
+                                                >
+                                                    -
+                                                </button>
+                                                <input 
+                                                    type="number" 
+                                                    id="scenes" 
+                                                    value={sceneCount} 
+                                                    onChange={handleSceneCountChange} 
+                                                    className={`${inputFieldClasses} text-center w-full pl-10 pr-10`} 
+                                                    min="1" 
+                                                    max="100"
+                                                    disabled={isLoading}
+                                                />
+                                                <button
+                                                    onClick={() => setSceneCount(prev => Math.min(100, prev + 1))}
+                                                    className="absolute right-0 top-0 bottom-0 px-3 text-lg font-bold text-gray-400 hover:text-white bg-gray-700/50 rounded-r-lg disabled:opacity-50"
+                                                    aria-label="Increase scene count"
+                                                    disabled={isLoading}
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+                                            <p className="mt-2 text-xs text-gray-400">Max 100.</p>
+                                        </div>
                                     </div>
                                 </div>
                             )}

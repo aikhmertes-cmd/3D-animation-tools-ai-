@@ -3,7 +3,7 @@ import type { Style } from './styles.ts';
 
 interface StyleSelectorProps {
   styles: Style[];
-  onSelectStyle: (styleName: string) => void;
+  onSelectStyle: (styleValue: string) => void;
   isLoading: boolean;
 }
 
@@ -15,7 +15,7 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ styles, onSelectStyle, is
         {styles.map((style) => (
           <button
             key={style.name}
-            onClick={() => onSelectStyle(style.name)}
+            onClick={() => onSelectStyle(style.value)}
             disabled={isLoading}
             className="group relative rounded-lg overflow-hidden border-2 border-gray-700/50 hover:border-cyan-400 focus:border-cyan-400 focus:outline-none transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-700/50"
             aria-label={`Select ${style.name} style`}

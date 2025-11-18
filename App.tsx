@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 // Import all components
 import ImageEditor from './components/ImageEditor.tsx';
@@ -7,10 +7,10 @@ import ImageGenerator from './components/ImageGenerator.tsx';
 // FIX: Corrected import to use named export for ImageMixer
 import ImageMixer from './components/ImageMixer.tsx';
 import ImageToPrompt from './components/ImageToPrompt.tsx';
-import ImageToVideoPrompt from './components/ImageToVideoPrompt.tsx';
 import StoryGenerator from './components/StoryGenerator.tsx';
 import MovieTrailerGenerator from './components/MovieTrailerGenerator.tsx';
 import StoryWriter from './components/StoryWriter.tsx';
+import KidsStoryGenerator from './components/KidsStoryGenerator.tsx';
 import ScriptOutlineGenerator from './components/ScriptOutlineGenerator.tsx';
 import PodcastGenerator from './components/PodcastGenerator.tsx';
 import TranslatedScriptGenerator from './components/TranslatedScriptGenerator.tsx';
@@ -18,21 +18,25 @@ import QuotifyGenerator from './components/QuotifyGenerator.tsx';
 import SpeakingVoiceover from './components/SpeakingVoiceover.tsx';
 import WorkTimer from './components/WorkTimer.tsx';
 import AnimatedTitle from './components/AnimatedTitle.tsx';
-import TextToVideo from './components/TextToVideo.tsx';
-import ImageToVideo from './components/ImageToVideo.tsx';
-import AnimationGenerator from './components/AnimationGenerator.tsx';
 import FaceSwapper from './components/FaceSwapper.tsx';
 import VoiceOverGenerator from './components/VoiceOverGenerator.tsx';
-import VideoTranslatedScript from './components/VideoTranslatedScript.tsx';
-import TextToVoiceover from './components/TextToVoiceover.tsx';
 import { useAuth } from './components/AuthContext.tsx';
 import LoginButton from './components/LoginButton.tsx';
 import UserProfile from './components/UserProfile.tsx';
+import LoginScreen from './components/LoginScreen.tsx';
+import ApiKeyModal from './components/ApiKeyModal.tsx';
+import { setApiKey, clearApiKey } from './services/geminiService.ts';
+import TextToVideo from './components/TextToVideo.tsx';
+import ImageToVideo from './components/ImageToVideo.tsx';
+import AnimationGenerator from './components/AnimationGenerator.tsx';
+import VideoTranslatedScript from './components/VideoTranslatedScript.tsx';
+import ImageToVideoPrompt from './components/ImageToVideoPrompt.tsx';
 
 // Define the structure of our tools
 const tools = {
   writing: {
     'story-writer': { label: 'Tools+Ai បង្កើតរឿង', icon: '🖋️', component: StoryWriter },
+    'kids-story-generator': { label: 'Story Studio', icon: '🎬', component: KidsStoryGenerator },
     'story-generator': { label: 'Story Generator', icon: '📖', component: StoryGenerator },
     'script-outline': { label: 'បង្កើតគ្រោងរឿង', icon: '📝', component: ScriptOutlineGenerator },
     'movie-trailer': { label: 'Movie Trailer', icon: '🎟️', component: MovieTrailerGenerator },
@@ -45,18 +49,17 @@ const tools = {
     'image-mixer': { label: 'Image Mixer', icon: '➕', component: ImageMixer },
     'image-to-prompt': { label: 'Image to Prompt', icon: '📝', component: ImageToPrompt },
     'face-swapper': { label: 'Face Swapper', icon: '😎', component: FaceSwapper },
+    'image-to-video-prompt': { label: 'Image to Video Prompt', icon: '🖼️➡️🎬', component: ImageToVideoPrompt },
   },
   video: {
-    'text-to-video': { label: 'Text to Video', icon: '📄➡️🎬', component: TextToVideo },
-    'image-to-video': { label: 'Image to Video', icon: '🖼️➡️🎬', component: ImageToVideo },
-    '3d-animation': { label: '3D Animation Tools', icon: '🧊', component: AnimationGenerator },
-    'video-prompt': { label: 'Video Prompt', icon: '🎬', component: ImageToVideoPrompt },
-    'video-translated-script': { label: 'Video Translated Script', icon: '📹🌐', component: VideoTranslatedScript },
+    'text-to-video': { label: 'Text to Video', icon: '📄➡️📹', component: TextToVideo },
+    'image-to-video': { label: 'Image to Video', icon: '🖼️➡️📹', component: ImageToVideo },
+    'animation-generator': { label: '3D Animation', icon: '🧊➡️📹', component: AnimationGenerator },
+    'video-translated-script': { label: 'Video Translated Script', icon: '📹➡️🌐', component: VideoTranslatedScript },
   },
   audio: {
     'podcast': { label: 'Podcast', icon: '🎙️', component: PodcastGenerator },
     'speaking-voiceover': { label: 'Speaking Voiceover', icon: '🎤', component: SpeakingVoiceover },
-    'text-to-voiceover': { label: 'Text to Voiceover', icon: '📄➡️🔊', component: TextToVoiceover },
     'voiceover-generator': { label: 'Voiceover Generator', icon: '🗣️', component: VoiceOverGenerator },
   },
 };
@@ -76,16 +79,39 @@ const App: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<MainCategory>('writing');
   const [activeTool, setActiveTool] = useState<string>('story-writer');
   const { user } = useAuth();
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
 
+  useEffect(() => {
+    const handleOpenModal = () => setIsApiKeyModalOpen(true);
+    window.addEventListener('openApiKeyModal', handleOpenModal);
+    return () => {
+        window.removeEventListener('openApiKeyModal', handleOpenModal);
+    };
+  }, []);
+  
   const handleCategoryChange = (category: MainCategory) => {
+    if (!user) return;
     setActiveCategory(category);
     // When category changes, set active tool to the first tool in that category
     setActiveTool(Object.keys(tools[category])[0]);
   };
 
+  const handleSaveApiKey = (key: string) => {
+    setApiKey(key);
+    setIsApiKeyModalOpen(false);
+  };
+
+  const handleClearApiKey = () => {
+      clearApiKey();
+  };
+
   // Style for main category tabs
   const getCategoryTabClass = (categoryKey: MainCategory) => {
+    const isDisabled = !user;
     const baseClasses = "flex items-center justify-center font-bold px-6 py-3 rounded-lg cursor-pointer transition-all duration-300 transform active:scale-[0.97] text-base shadow-md border-b-4";
+     if (isDisabled) {
+        return `${baseClasses} bg-gray-800 text-gray-500 border-gray-900 cursor-not-allowed opacity-60`;
+    }
     if (activeCategory === categoryKey) {
       return `${baseClasses} bg-gradient-to-r from-purple-600 to-cyan-500 text-white border-purple-800 scale-105 shadow-xl`;
     }
@@ -100,12 +126,6 @@ const App: React.FC = () => {
     }
     return `${baseClasses} bg-gray-800/50 text-gray-400 hover:bg-gray-700/70`;
   };
-
-  // FIX: Correctly look up the component for the active tool.
-  // The original type assertion `activeTool as ToolKey<typeof activeCategory>` was incorrect because `typeof activeCategory`
-  // is a union of all categories, which causes `ToolKey` to resolve to `never`.
-  // This fix uses a safer type assertion on the tool group object, which is known to be correct due to the application logic.
-  const ComponentToRender = (tools[activeCategory] as Record<string, { component: React.FC }>)[activeTool]?.component;
   
   const telegramButtonClasses = "flex items-center gap-2 px-3 py-2 text-sm font-semibold text-cyan-300 bg-gray-700/50 border border-gray-600 rounded-lg hover:bg-gray-700 transition-colors duration-200 transform active:scale-95";
 
@@ -143,51 +163,83 @@ const App: React.FC = () => {
             </div>
             <WorkTimer />
             <div className="h-8 w-px bg-gray-600 hidden sm:block"></div>
+            {user && (
+              <button
+                onClick={() => setIsApiKeyModalOpen(true)}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-yellow-300 bg-gray-700/50 border border-gray-600 rounded-lg hover:bg-gray-700 transition-colors duration-200"
+                aria-label="Manage API Key"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v-2l1-1 1-1-1.257-1.257A6 6 0 1118 8zm-6-4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 5.257L8 16.146V18h1.854l2.89-2.89A6 6 0 012 8z" clipRule="evenodd" />
+                </svg>
+                <span>API Key</span>
+            </button>
+            )}
             {user ? <UserProfile /> : <LoginButton />}
         </div>
       </header>
       <main className="flex-grow flex flex-col items-center p-4 w-full">
-        {/* Main Category Tabs */}
-        <div className="mb-6 flex flex-wrap justify-center gap-4 p-2" role="tablist" aria-label="Tool Categories">
-            {mainCategories.map(({ key, label, icon }) => (
-                 <button 
-                    key={key}
-                    role="tab" 
-                    aria-selected={activeCategory === key}
-                    onClick={() => handleCategoryChange(key)} 
-                    className={getCategoryTabClass(key)}
-                 >
-                    <span className="text-2xl mr-3">{icon}</span>
-                    {label}
-                 </button>
-            ))}
-        </div>
+        {user ? (
+          <>
+            {/* Main Category Tabs */}
+            <div className="mb-6 flex flex-wrap justify-center gap-4 p-2" role="tablist" aria-label="Tool Categories">
+                {mainCategories.map(({ key, label, icon }) => (
+                     <button 
+                        key={key}
+                        role="tab" 
+                        aria-selected={activeCategory === key}
+                        onClick={() => handleCategoryChange(key)} 
+                        className={getCategoryTabClass(key)}
+                        disabled={!user}
+                     >
+                        <span className="text-2xl mr-3">{icon}</span>
+                        {label}
+                     </button>
+                ))}
+            </div>
 
-        {/* Secondary Tool Tabs */}
-        <div className="mb-6 w-full max-w-7xl flex flex-wrap justify-center gap-3 p-2 bg-gray-800 rounded-lg border border-gray-700" role="tablist" aria-label="AI Media Tools">
-            {/* FIX: Cast `tools[activeCategory]` to a known type to help TypeScript infer the correct type for `toolDetails`. */}
-            {/* The `toolDetails` object was being inferred as `unknown` because `tools[activeCategory]` is a union of different tool objects. */}
-            {Object.entries(tools[activeCategory] as Record<string, { label: string; icon: string; component: React.FC; }>).map(([toolKey, toolDetails]) => (
-                <button
-                    key={toolKey}
-                    role="tab"
-                    aria-selected={activeTool === toolKey}
-                    onClick={() => setActiveTool(toolKey)}
-                    className={getToolTabClass(toolKey)}
-                >
-                    <span className="text-xl mr-2">{toolDetails.icon}</span>
-                    {toolDetails.label}
-                </button>
-            ))}
-        </div>
-        
-        <div className="w-full flex-grow">
-            {ComponentToRender ? <ComponentToRender /> : <div className="text-center text-gray-500">Tool not found.</div>}
-        </div>
+            {/* Secondary Tool Tabs */}
+            <div className="mb-6 w-full max-w-7xl flex flex-wrap justify-center gap-3 p-2 bg-gray-800 rounded-lg border border-gray-700" role="tablist" aria-label="AI Media Tools">
+                {Object.entries(tools[activeCategory] as Record<string, { label: string; icon: string; component: React.FC; }>).map(([toolKey, toolDetails]) => (
+                    <button
+                        key={toolKey}
+                        role="tab"
+                        aria-selected={activeTool === toolKey}
+                        onClick={() => setActiveTool(toolKey)}
+                        className={getToolTabClass(toolKey)}
+                    >
+                        <span className="text-xl mr-2">{toolDetails.icon}</span>
+                        {toolDetails.label}
+                    </button>
+                ))}
+            </div>
+            
+            <div className="w-full flex-grow">
+              {Object.entries(tools[activeCategory] as Record<string, { component: React.FC }>).map(([toolKey, toolDetails]) => {
+                  const Component = toolDetails.component;
+                  if (!Component) return null;
+                  return (
+                      <div key={toolKey} className="h-full" style={{ display: activeTool === toolKey ? 'block' : 'none' }}>
+                          <Component />
+                      </div>
+                  );
+              })}
+            </div>
+          </>
+        ) : (
+          <LoginScreen />
+        )}
       </main>
       <footer className="w-full p-4 bg-gray-800/50 border-t border-gray-700 text-center text-sm text-gray-400">
         Copyright © 2026   អេតមីន - សាល  | Admin: SAI (@SEYPISAL)
       </footer>
+
+       <ApiKeyModal
+        isOpen={isApiKeyModalOpen}
+        onClose={() => setIsApiKeyModalOpen(false)}
+        onSave={handleSaveApiKey}
+        onClear={handleClearApiKey}
+      />
     </div>
   );
 };

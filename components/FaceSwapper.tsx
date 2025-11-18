@@ -71,7 +71,6 @@ const FaceSwapper: React.FC = () => {
 
     setIsLoading(true);
     setError(null);
-    setEditedImage(null);
     setActiveStyle(style.name);
 
     try {

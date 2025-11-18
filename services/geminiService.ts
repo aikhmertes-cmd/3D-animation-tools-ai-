@@ -7,15 +7,49 @@ const state = {
     ai: null as GoogleGenAI | null,
 };
 
+// New function to reset the singleton state
+const resetServiceState = () => {
+    state.apiKey = null;
+    state.ai = null;
+    console.log("Gemini service state has been reset.");
+};
+
+// New exported function to set the key
+export const setApiKey = (key: string) => {
+    if (key && key.trim()) {
+        localStorage.setItem('gemini_api_key', key.trim());
+    } else {
+        localStorage.removeItem('gemini_api_key');
+    }
+    resetServiceState();
+};
+
+// New exported function to clear the key
+export const clearApiKey = () => {
+    localStorage.removeItem('gemini_api_key');
+    resetServiceState();
+};
+
+
 async function getApiKey(): Promise<string> {
     if (state.apiKey) {
         return state.apiKey;
     }
+
+    // Priority 1: Get key from local storage
+    const storedApiKey = localStorage.getItem('gemini_api_key');
+    if (storedApiKey) {
+        console.log("Using API key from local storage.");
+        state.apiKey = storedApiKey;
+        return storedApiKey;
+    }
+    
+    // Priority 2: Fetch from Netlify serverless function (for production)
     try {
         const response = await fetch('/.netlify/functions/getApiKey');
         if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`Failed to fetch API key: ${response.status} ${errorText}`);
+            throw new Error(`Failed to fetch API key from Netlify function: ${response.status} ${errorText}`);
         }
         const { apiKey } = await response.json();
         if (!apiKey) {
@@ -24,10 +58,21 @@ async function getApiKey(): Promise<string> {
         state.apiKey = apiKey;
         return apiKey;
     } catch (e) {
-        console.error("Could not fetch API key from Netlify function.", e);
-        throw new Error("Could not retrieve API key. Ensure the application is deployed on Netlify with the API_KEY environment variable set.");
+        console.warn("Could not fetch API key from Netlify function. This is expected in a local development environment. Checking for fallback...", e);
+        
+        // Priority 3: Use hardcoded fallback key (for development)
+        const fallbackApiKey = "AIzaSyBZmGQR12QhJ8cD4RSL1yOll9go2YHLxVg";
+        
+        if (!fallbackApiKey) {
+            throw new Error("Could not retrieve an API key. Please set one manually using the 'API Key' button.");
+        }
+
+        console.warn("Using a hardcoded fallback API key. For best results, please set your own key.");
+        state.apiKey = fallbackApiKey;
+        return fallbackApiKey;
     }
 }
+
 
 async function getAi(): Promise<GoogleGenAI> {
     if (state.ai) {
@@ -313,6 +358,12 @@ export const generateVideo = async (options: VideoGenerationOptions): Promise<Bl
 };
 
 
+export interface VideoIdea {
+    title: string;
+    summary: string;
+    sampleScriptLine: string;
+}
+
 export interface Dialog {
     character: string;
     line: string;
@@ -360,38 +411,52 @@ interface StoryOptions {
 export const generateStory = async (options: StoryOptions): Promise<StoryScene[]> => {
     const { topic, genderFocus, pastedStory, style, sceneCount, characters, smartThinking } = options;
 
+    const mainCharacterName = characters.length > 0 ? characters[0].name : null;
+    const mainCharacterInstruction = mainCharacterName ? `The main character is ${mainCharacterName}. Their name MUST be included in the visual 'prompt' for EVERY scene.` : '';
+
     const characterDetails = "The story must feature the following characters with these specific details:\n" +
         characters.map(c =>
             `- Name: ${c.name}\n  - Gender: ${c.gender}\n  - Age: ${c.age}\n  - Description: ${c.description}`
         ).join('\n\n');
         
-    const genderFocusDetails = genderFocus ? ` The story should have a gender focus on: ${genderFocus}.` : '';
+    let genderFocusDetails = genderFocus ? ` The story should have a gender focus on: ${genderFocus}.` : '';
+
+    if (genderFocus === 'Action Heroine') {
+        genderFocusDetails = `The protagonist MUST be a strong female character (an 'Action Heroine'). She must be the primary actor in conflict and action scenes. Describe her fighting style and prowess in detail. Show her overcoming obstacles through both cleverness and physical combat. She is a clever problem-solver and may defy traditional gender expectations or roles (for example, by disguising herself or taking on a role typically reserved for men). Ensure she is the central figure driving the plot forward through her actions.`;
+    }
+
     let systemInstruction = '';
     let userPrompt = '';
+
+    const criticalRules = `
+CRITICAL RULES:
+1.  For EVERY single scene you generate, the "prompt" field MUST explicitly describe the visuals using the required artistic style: **${style}**. This is non-negotiable.
+2.  You MUST strictly adhere to the gender specified for each character throughout the entire story. Do not change a character's gender under any circumstances.
+3.  For any scenes involving action, fighting, or combat, describe the sequences with vivid detail. Focus on dynamic movements, specific actions (parrying, dodging, striking), the impact of blows, and the characters' expressions and determination during the fight. Make the combat exciting and clear.
+4.  ${mainCharacterInstruction}
+    `;
 
     if (pastedStory) {
         systemInstruction = `You are a creative scriptwriter who transforms a given story into a detailed scene-by-scene script for video generation.
         Your task is to take the user's provided story and break it down into exactly ${sceneCount} scenes.
+        ${criticalRules}
         The final output MUST be a valid JSON array of objects, where each object represents a scene with a specific, detailed structure.
         Each scene object must contain the following keys: "scene_number", "slug", "title", "prompt", "camera", "sfx", "bgm_track", "bgm_timing", "scene_description", "dialog", and "metadata".
-        - "prompt": A detailed visual prompt for an AI image/video generator, based on the scene description and style.
         - "sfx": An array of strings describing sound effects.
         - "scene_description": An object with "line", "timing", and "tone".
         - "metadata": An object with "aspect_ratio" (always "16:9"), "tone", and a list of "characters" in the scene.
-        The overall artistic style for the story should be imagined as ${style}.
         Do not include any introductory text, markdown formatting, or anything outside of the JSON array.`;
         userPrompt = `Here is the story to transform: """${pastedStory}"""\n\n${characterDetails}`;
     } else {
         systemInstruction = `You are a creative storyteller and scriptwriter for video generation. 
         Your task is to generate a story based on the user's request, formatted as a detailed scene-by-scene script.
         The story must be broken down into exactly ${sceneCount} scenes.
+        ${criticalRules}
         The final output MUST be a valid JSON array of objects, where each object represents a scene with a specific, detailed structure.
         Each scene object must contain the following keys: "scene_number", "slug", "title", "prompt", "camera", "sfx", "bgm_track", "bgm_timing", "scene_description", "dialog", and "metadata".
-        - "prompt": A detailed visual prompt for an AI image/video generator, based on the scene description and style.
         - "sfx": An array of strings describing sound effects.
         - "scene_description": An object with "line", "timing", and "tone".
         - "metadata": An object with "aspect_ratio" (always "16:9"), "tone", and a list of "characters" in the scene.
-        The overall artistic style for the story should be imagined as ${style}.
         Do not include any introductory text, markdown formatting, or anything outside of the JSON array.`;
         userPrompt = `Generate a story about: "${topic}".\n\n${characterDetails}\n\n${genderFocusDetails}`;
     }
@@ -407,7 +472,7 @@ export const generateStory = async (options: StoryOptions): Promise<StoryScene[]
                     scene_number: { type: Type.NUMBER, description: "The scene number, starting from 1." },
                     slug: { type: Type.STRING, description: "A short, URL-friendly slug for the scene (e.g., 'playground')." },
                     title: { type: Type.STRING, description: "A short title for the scene." },
-                    prompt: { type: Type.STRING, description: "A detailed prompt for an AI image generator to create this scene, incorporating the story style." },
+                    prompt: { type: Type.STRING, description: "A detailed visual prompt for an AI generator that MUST incorporate the overall artistic style." },
                     camera: { type: Type.STRING, description: "Camera direction (e.g., 'aerial; composition: thirds')." },
                     sfx: { type: Type.ARRAY, items: { type: Type.STRING }, description: "An array of sound effects for the scene." },
                     bgm_track: { type: Type.STRING, description: "Name of the background music track." },
@@ -479,6 +544,198 @@ export const generateStory = async (options: StoryOptions): Promise<StoryScene[]
     }
 };
 
+export interface LyricsResponse {
+    songTitle: string;
+    songLyrics: string;
+}
+
+interface LyricsOptions {
+    topic: string;
+    characters: Character[];
+    audience: 'kids' | 'adults';
+}
+
+export const generateLyrics = async (options: LyricsOptions): Promise<LyricsResponse> => {
+    const { topic, characters, audience } = options;
+
+    let characterDetails = '';
+    if (characters && characters.length > 0) {
+        characterDetails = "The song should be inspired by the following characters. Make the song lively and reflect their personalities:\n" +
+            characters.map(c =>
+                `- Name: ${c.name}\n  - Gender: ${c.gender}\n  - Age: ${c.age}\n  - Description: ${c.description}`
+            ).join('\n\n');
+    }
+
+    const audiencePrompt = audience === 'kids'
+        ? 'You are a creative songwriter for young children (ages 3-7). Your task is to generate a simple, positive song.'
+        : 'You are a professional lyricist for an adult audience. Your task is to generate a song with more complex themes, deeper vocabulary, and emotional depth.';
+
+    const systemInstruction = `${audiencePrompt}
+    The final output MUST be a valid JSON object. This object must contain two keys: "songTitle" and "songLyrics".
+    - "songTitle": A fun, catchy title for the song.
+    - "songLyrics": The lyrics for the song. The lyrics MUST be structured with clear headings like [Verse 1], [Chorus], and [Outro]. You MUST also include a line for musical direction in parentheses, like (Upbeat pop tempo). Make it look like a real song sheet.
+    Do not include any introductory text, markdown formatting, or anything outside of the JSON object.`;
+
+    const userPrompt = `Generate a song about: "${topic}".\n\n${characterDetails}`;
+
+    const schema = {
+        type: Type.OBJECT,
+        properties: {
+            songTitle: { type: Type.STRING, description: "A catchy title for the song." },
+            songLyrics: { type: Type.STRING, description: "Lyrics for the song, structured with headings like [Verse] and [Chorus]." },
+        },
+        required: ['songTitle', 'songLyrics']
+    };
+
+    try {
+        const ai = await getAi();
+        const response = await ai.models.generateContent({
+            model: textModel,
+            contents: userPrompt,
+            config: {
+                systemInstruction,
+                responseMimeType: "application/json",
+                responseSchema: schema,
+            },
+        });
+
+        const jsonStr = response.text.trim();
+        const result = JSON.parse(jsonStr) as LyricsResponse;
+        
+        return result;
+
+    } catch (error) {
+        console.error('Error calling Gemini API for lyrics generation:', error);
+        if (error instanceof Error && error.message.includes('JSON')) {
+             throw new Error('Failed to generate song. The model returned an invalid JSON format. Please try again.');
+        }
+        throw new Error('Failed to generate lyrics. Please check the console for more details.');
+    }
+};
+
+export interface LyricScene {
+    scene_number: number;
+    title: string;
+    prompt: string;
+}
+
+export const generateScenesFromLyrics = async (lyrics: string, style: string): Promise<LyricScene[]> => {
+    const systemInstruction = `You are a music video director. Your task is to analyze the provided song lyrics or story text and generate a series of visual scenes for an AI image/video generator.
+The required visual style for EVERY scene is: **${style}**.
+You MUST ensure that the 'prompt' for each and every scene explicitly incorporates and describes this style. Do not deviate from this style for any scene.
+The output must be a valid JSON array of objects. Do not include any other text or markdown.`;
+
+    const userPrompt = `Here are the lyrics/story:\n\n"""\n${lyrics}\n"""`;
+
+    const schema = {
+        type: Type.ARRAY,
+        items: {
+            type: Type.OBJECT,
+            properties: {
+                scene_number: { type: Type.NUMBER, description: "The sequential number of the scene." },
+                title: { type: Type.STRING, description: "A short, descriptive title for the scene." },
+                prompt: { type: Type.STRING, description: "A detailed visual prompt for an AI generator for this scene." }
+            },
+            required: ['scene_number', 'title', 'prompt']
+        }
+    };
+    
+    try {
+        const ai = await getAi();
+        const response = await ai.models.generateContent({
+            model: storyModel, // Use pro model for better creative interpretation
+            contents: userPrompt,
+            config: {
+                systemInstruction,
+                responseMimeType: "application/json",
+                responseSchema: schema,
+            },
+        });
+        const jsonStr = response.text.trim();
+        return JSON.parse(jsonStr) as LyricScene[];
+    } catch (error) {
+        console.error('Error calling Gemini API for scene generation from lyrics:', error);
+        throw new Error('Failed to generate scenes from lyrics. The model may have returned an invalid format.');
+    }
+};
+
+export interface SimpleStoryResponse {
+    storyTitle: string;
+    storyContent: string;
+}
+
+interface SimpleStoryOptions {
+    topic: string;
+    characters: Character[];
+    image?: {
+        base64: string;
+        mimeType: string;
+    };
+}
+
+export const generateSimpleStory = async (options: SimpleStoryOptions): Promise<SimpleStoryResponse> => {
+    const { topic, characters, image } = options;
+
+    let characterDetails = "The story should feature these characters:\n" +
+        characters.map(c => `- Name: ${c.name}, Gender: ${c.gender}, Age: ${c.age}, Description: ${c.description}`).join('\n');
+
+    const systemInstruction = `You are a creative storyteller for young children. Generate a simple, positive, short story.
+    The final output MUST be a valid JSON object with "storyTitle" and "storyContent" keys.
+    The story content should be a single block of text, using newline characters for paragraphs.
+    Do not include any introductory text, markdown formatting, or anything outside of the JSON object.`;
+
+    let userPrompt = `Generate a short story about: "${topic}".\n\n${characterDetails}`;
+    
+    const contents: { parts: any[] } = {
+        parts: []
+    };
+
+    if (image) {
+        userPrompt += "\n\nUse the provided image as the primary inspiration for the story's setting, characters, and events.";
+        contents.parts.push({
+            inlineData: {
+                data: image.base64,
+                mimeType: image.mimeType,
+            },
+        });
+    }
+
+    contents.parts.push({ text: userPrompt });
+
+    const schema = {
+        type: Type.OBJECT,
+        properties: {
+            storyTitle: { type: Type.STRING, description: "A catchy title for the story." },
+            storyContent: { type: Type.STRING, description: "The content of the story, with paragraphs separated by newlines." },
+        },
+        required: ['storyTitle', 'storyContent']
+    };
+
+    try {
+        const ai = await getAi();
+        const response = await ai.models.generateContent({
+            model: textModel,
+            contents: { parts: contents.parts },
+            config: {
+                systemInstruction,
+                responseMimeType: "application/json",
+                responseSchema: schema,
+            },
+        });
+
+        const jsonStr = response.text.trim();
+        return JSON.parse(jsonStr) as SimpleStoryResponse;
+    } catch (error) {
+        console.error('Error calling Gemini API for simple story generation:', error);
+        if (error instanceof Error && error.message.includes('JSON')) {
+             throw new Error('Failed to generate story. The model returned an invalid JSON format. Please try again.');
+        }
+        throw new Error('Failed to generate story. Please check the console for more details.');
+    }
+};
+
+
+
 export interface TrailerScriptOptions {
     title?: string;
     genre: string;
@@ -486,31 +743,45 @@ export interface TrailerScriptOptions {
     tone: string;
     visualStyle: string;
     sceneCount: number;
+    noVoiceover?: boolean;
+    noSubtitle?: boolean;
+    focusOnCharacters?: boolean;
 }
 
 export const generateTrailerScript = async (options: TrailerScriptOptions): Promise<StoryScene[]> => {
-    const { title, genre, synopsis, tone, visualStyle, sceneCount } = options;
+    const { title, genre, synopsis, tone, visualStyle, sceneCount, noVoiceover, noSubtitle, focusOnCharacters } = options;
     
-    const titleText = title ? `The movie is titled "${title}".` : "";
+    const additionalRules: string[] = [];
+    if (noVoiceover) {
+        additionalRules.push('- The "scene_description.line" property for the narrator\'s voice-over MUST be an empty string for all scenes.');
+    }
+    if (noSubtitle) {
+        additionalRules.push('- The "dialog" array MUST NOT contain any objects where the "character" is "ON-SCREEN TEXT". Only include actual character dialogue if present.');
+    }
+    if (focusOnCharacters) {
+        additionalRules.push('- CRITICAL RULE: Put a strong focus on the characters and their faces in every single shot to ensure they are clear and recognizable. The visual prompts ("prompt" property) MUST describe characters in a way that helps an AI retain their appearance across different scenes. Use close-ups and medium shots where appropriate.');
+    }
+    const rulesText = additionalRules.join('\n');
 
     const systemInstruction = `You are an expert movie trailer editor and scriptwriter. Your task is to create a script for a compelling movie trailer based on the user's input.
-    The script must be broken down into exactly ${sceneCount} scenes.
-    The final output MUST be a valid JSON array of objects, where each object represents a scene with the exact structure of the StoryScene interface.
-    - "scene_number": The sequence number of the shot.
-    - "slug": A short slug for the scene (e.g., 'reveal-of-hero').
-    - "title": A short, impactful title for the scene (e.g., 'A Glimmer of Hope').
-    - "prompt": A detailed visual prompt for an AI video generator. Describe the shot, characters, action, and setting with cinematic detail. The user will specify a visual style that you must adhere to for these prompts.
-    - "camera": Suggested camera movement (e.g., 'Slow zoom in', 'fast-paced montage cuts').
-    - "sfx": An array of key sound effects.
-    - "bgm_track": A description of the background music for this scene (e.g., 'Tense, building orchestral score').
-    - "bgm_timing": e.g., '0s-5s'.
-    - "scene_description": This object should contain the voice-over narration. The "line" property is the narrator's line, and "tone" should describe the delivery (e.g., 'Gravelly, serious').
-    - "dialog": Use this array for on-screen text. For each text element, create an object with "character": "ON-SCREEN TEXT" and "line": "THE TEXT TO DISPLAY". If there is character dialog, include it normally.
-    - "metadata": Should include "aspect_ratio": "16:9", the "tone" of the scene, and a list of "characters".
-    Do not include any introductory text, markdown formatting, or anything outside of the JSON array.`;
+        The script must be broken down into exactly ${sceneCount} scenes.
+        ${rulesText ? `\nFollow these additional rules precisely:\n${rulesText}\n` : ''}
+        The final output MUST be a valid JSON array of objects, where each object represents a scene with the exact structure of the StoryScene interface.
+        - "scene_number": The sequence number of the shot.
+        - "slug": A short slug for the scene (e.g., 'reveal-of-hero').
+        - "title": A short, impactful title for the scene (e.g., 'A Glimmer of Hope').
+        - "prompt": A detailed visual prompt for an AI video generator. Describe the shot, characters, action, and setting with cinematic detail. The user will specify a visual style that you must adhere to for these prompts.
+        - "camera": Suggested camera movement (e.g., 'Slow zoom in', 'fast-paced montage cuts').
+        - "sfx": An array of key sound effects.
+        - "bgm_track": A description of the background music for this scene (e.g., 'Tense, building orchestral score').
+        - "bgm_timing": e.g., '0s-5s'.
+        - "scene_description": This object should contain the voice-over narration. The "line" property is the narrator's line, and "tone" should describe the delivery (e.g., 'Gravelly, serious').
+        - "dialog": Use this for on-screen text. For each text element, create an object with "character": "ON-SCREEN TEXT" and "line": "THE TEXT TO DISPLAY". If there is character dialog, include it normally.
+        - "metadata": Should include "aspect_ratio": "16:9", the "tone" of the scene, and a list of "characters".
+        Do not include any introductory text, markdown formatting, or anything outside of the JSON array.`;
 
     const userPrompt = `Generate a trailer script for a ${genre} movie with a ${tone} tone. The overall visual style for the trailer should be: **${visualStyle}**. Make sure the 'prompt' for each scene reflects this style.
-    ${titleText}
+    ${title ? `The movie is titled "${title}".` : ""}
     Synopsis: """${synopsis}"""`;
     
     const storySchema = {
@@ -666,6 +937,43 @@ export const generateCharacters = async (topic: string, characterCount: number):
     }
 };
 
+export const generateKidsCharacters = async (topic: string): Promise<Character[]> => {
+    const systemInstruction = `You are a creative character designer for children's songs. Based on a song topic, you will generate 2 cute and simple characters. The output must be a valid JSON array of objects.`;
+    const userPrompt = `Generate 2 unique and simple characters for a kids' song about: "${topic}". For each character, provide a name, gender, a simple age (e.g., "a little boy", "a friendly bear"), and a one-sentence description of their personality.`;
+
+    const schema = {
+        type: Type.ARRAY,
+        items: {
+            type: Type.OBJECT,
+            properties: {
+                name: { type: Type.STRING, description: "The character's name." },
+                gender: { type: Type.STRING, description: "The character's gender (e.g., Male, Female, Animal)." },
+                age: { type: Type.STRING, description: "A simple, descriptive age for the character." },
+                description: { type: Type.STRING, description: "A one-sentence description of the character." },
+            },
+            required: ['name', 'gender', 'age', 'description'],
+        },
+    };
+
+    try {
+        const ai = await getAi();
+        const response = await ai.models.generateContent({
+            model: textModel, // Use flash model for speed
+            contents: userPrompt,
+            config: {
+                systemInstruction,
+                responseMimeType: "application/json",
+                responseSchema: schema,
+            },
+        });
+        const jsonStr = response.text.trim();
+        return JSON.parse(jsonStr) as Character[];
+    } catch (error) {
+        console.error('Error calling Gemini API for kids character generation:', error);
+        throw new Error('Failed to generate characters for the song. Please try again.');
+    }
+};
+
 
 export interface StoryIdea {
     title: string;
@@ -739,8 +1047,18 @@ export const generateNarration = async (text: string): Promise<string> => {
 
 export type PrebuiltVoice = 'Kore' | 'Puck' | 'Charon' | 'Fenrir' | 'Zephyr';
 
-export const generateVoiceover = async (text: string, language: string, voiceName: PrebuiltVoice = 'Kore', emotion: string = 'in a clear, narrative tone'): Promise<string> => {
-    const prompt = `Say ${emotion} in ${language}: ${text}`;
+export const generateVoiceover = async (text: string, language: string, voiceName: PrebuiltVoice = 'Kore', emotion: string = 'in a clear, narrative tone', characterDescription?: string): Promise<string> => {
+    let instruction = '';
+
+    if (characterDescription) {
+        // e.g., "like a gentle, old grandmother"
+        instruction += `speaking ${characterDescription} `;
+    }
+
+    // e.g., "in a sad tone"
+    instruction += `${emotion} `;
+
+    const prompt = `Say ${instruction.trim()} in ${language}: ${text}`;
     try {
         const ai = await getAi();
         const response = await ai.models.generateContent({
@@ -1092,16 +1410,26 @@ export const translateText = async (text: string, sourceLang: string, targetLang
     }
 };
 
-export const generateQuotifyPrompts = async (speaker: string, numPrompts: number): Promise<string[]> => {
+export const generateQuotifyPrompts = async (speaker: string, numPrompts: number, style?: string, focusOnCharacters?: boolean): Promise<string[]> => {
     const systemInstruction = `You are a prompt engineering expert specializing in creating high-quality, tailored prompts for text-to-image AI generators. Your goal is to generate unique, vivid, and inspiring prompts.`;
     
-    const userPrompt = `Generate exactly ${numPrompts} unique prompts based on the speaking style and motivational themes of ${speaker}.
+    const styleInstruction = style 
+        ? `5. The artistic style for the image must be **${style}**. You must include this style description in the generated prompt text.`
+        : '';
+
+    const focusInstruction = focusOnCharacters
+        ? `6. CRITICAL RULE: Put a strong focus on the characters and their faces in every shot to ensure they are clear and recognizable. The visual prompts ("prompt" property) MUST describe characters in a way that helps an AI retain their appearance across different scenes.`
+        : '';
+
+    const userPrompt = `Generate exactly ${numPrompts} unique prompts based on the motivational themes of ${speaker}.
 
     Each prompt must follow these rules:
-    1.  Describe a dynamic and passionate shot of a speaker reminiscent of ${speaker}, capturing their determined expression and commanding stage presence.
+    1.  Describe a dynamic and passionate shot of a motivational speaker. This speaker should embody the qualities (determined expression, commanding stage presence) of a figure like ${speaker}, but MUST NOT be a direct likeness or named depiction of them. Use generic but descriptive features (e.g., "a woman with curly hair speaking passionately," "a man in a sharp suit gesturing towards the audience").
     2.  The setting should be a serene or motivational background, possibly slightly blurred to emphasize the speaker.
     3.  Include a powerful, short motivational quote, in the style of ${speaker}, that is clearly overlaid or emblazoned on the image in a bold font.
     4.  The prompt must be a single paragraph of descriptive text.
+    ${styleInstruction}
+    ${focusInstruction}
 
     Return the result as a valid JSON array of strings. Do not include any other text, markdown, or commentary.`;
 
@@ -1173,5 +1501,104 @@ export const enhanceQuotifyPrompts = async (prompts: string[]): Promise<string[]
     } catch (error) {
         console.error('Error calling Gemini API for Quotify prompt enhancement:', error);
         throw new Error('Failed to enhance prompts. The model may have returned an invalid format.');
+    }
+};
+
+export const generateVideoIdeas = async (options: {
+    videoType: string;
+    language: string;
+    characterStyle: string;
+    customTopic: string;
+    ideaCount: number;
+}): Promise<VideoIdea[]> => {
+    const { videoType, language, characterStyle, customTopic, ideaCount } = options;
+
+    const systemInstruction = `You are a creative idea generator for short animated videos. Your task is to provide a list of video concepts based on user specifications. The output must be a valid JSON array of objects.`;
+
+    const userPrompt = `Generate ${ideaCount} video ideas for a ${videoType} video in ${language}. 
+    The video will feature a simple ${characterStyle} character. 
+    The main theme is: "${customTopic}".
+    For each idea, provide a unique 'title' in ${language}, a short 'summary' in ${language} describing the story or message, and a single 'sampleScriptLine' in ${language} that could be used in the voiceover.`;
+
+    const schema = {
+        type: Type.ARRAY,
+        items: {
+            type: Type.OBJECT,
+            properties: {
+                title: { type: Type.STRING, description: `The title of the video idea in ${language}.` },
+                summary: { type: Type.STRING, description: `A short summary of the video idea in ${language}.` },
+                sampleScriptLine: { type: Type.STRING, description: `A sample line of script for the voiceover in ${language}.` },
+            },
+            required: ['title', 'summary', 'sampleScriptLine'],
+        },
+    };
+
+    try {
+        const ai = await getAi();
+        const response = await ai.models.generateContent({
+            model: storyModel, // gemini-2.5-pro for creativity
+            contents: userPrompt,
+            config: {
+                systemInstruction,
+                responseMimeType: "application/json",
+                responseSchema: schema,
+                thinkingConfig: { thinkingBudget: 32768 },
+            },
+        });
+        const jsonStr = response.text.trim();
+        return JSON.parse(jsonStr) as VideoIdea[];
+    } catch (error) {
+        console.error('Error calling Gemini API for video idea generation:', error);
+        throw new Error('Failed to generate video ideas. Please check the console for details.');
+    }
+};
+
+export interface VlogScriptResponse {
+    youtubeTitle: string;
+    youtubeDescription: string;
+    vlogScript: string;
+}
+
+export const generateVlogScript = async (topic: string, style: string): Promise<VlogScriptResponse> => {
+    const systemInstruction = `You are a professional YouTube scriptwriter. Your task is to generate a complete vlog package based on a user's topic and chosen style.
+    The final output MUST be a valid JSON object. This object must contain three keys: "youtubeTitle", "youtubeDescription", and "vlogScript".
+    - "youtubeTitle": A catchy, SEO-friendly title for the YouTube video.
+    - "youtubeDescription": A well-written YouTube description, including a brief summary, timestamps (if applicable), and relevant hashtags.
+    - "vlogScript": A detailed, engaging script for the vlog. The script MUST be structured with clear headings like [INTRO], [MAIN CONTENT], [B-ROLL SUGGESTION], [CALL TO ACTION], and [OUTRO]. The script should be conversational and natural-sounding. Include suggestions for camera angles and shots where appropriate.
+    Do not include any introductory text, markdown formatting, or anything outside of the JSON object.`;
+
+    const userPrompt = `Generate a vlog script about the topic: "${topic}". The required style for this vlog is: **${style}**.`;
+
+    const schema = {
+        type: Type.OBJECT,
+        properties: {
+            youtubeTitle: { type: Type.STRING, description: "A catchy, SEO-friendly title for the vlog." },
+            youtubeDescription: { type: Type.STRING, description: "A detailed YouTube description with summary and hashtags." },
+            vlogScript: { type: Type.STRING, description: "The full vlog script with structural headings like [INTRO]." },
+        },
+        required: ['youtubeTitle', 'youtubeDescription', 'vlogScript']
+    };
+
+    try {
+        const ai = await getAi();
+        const response = await ai.models.generateContent({
+            model: storyModel, // gemini-2.5-pro for high quality creative writing
+            contents: userPrompt,
+            config: {
+                systemInstruction,
+                responseMimeType: "application/json",
+                responseSchema: schema,
+                thinkingConfig: { thinkingBudget: 32768 },
+            },
+        });
+
+        const jsonStr = response.text.trim();
+        return JSON.parse(jsonStr) as VlogScriptResponse;
+    } catch (error) {
+        console.error('Error calling Gemini API for vlog script generation:', error);
+        if (error instanceof Error && error.message.includes('JSON')) {
+             throw new Error('Failed to generate vlog script. The model returned an invalid JSON format. Please try again.');
+        }
+        throw new Error('Failed to generate vlog script. Please check the console for more details.');
     }
 };

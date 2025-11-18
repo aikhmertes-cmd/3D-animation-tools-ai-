@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { generateQuotifyPrompts, enhanceQuotifyPrompts } from '../services/geminiService';
+import { styles } from './styles.ts';
 
 const Spinner: React.FC<{className?: string}> = ({className = "-ml-1 mr-3 h-5 w-5 text-white"}) => (
     <svg className={`animate-spin ${className}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -10,7 +11,7 @@ const Spinner: React.FC<{className?: string}> = ({className = "-ml-1 mr-3 h-5 w-
 
 const CopyIcon: React.FC = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-        <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" />
+        <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2-2H9a2 2 0 01-2-2V9z" />
         <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h6a2 2 0 00-2-2H5z" />
     </svg>
 );
@@ -50,6 +51,10 @@ const ClearProjectButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
 const QuotifyGenerator: React.FC = () => {
     const [speaker, setSpeaker] = useState('Jay Shetty');
     const [numPrompts, setNumPrompts] = useState(8);
+    const [style, setStyle] = useState<string>(styles[0].value);
+    const [focusOnCharacters, setFocusOnCharacters] = useState(false);
+    type QuotifyTab = 'config' | 'style';
+    const [activeTab, setActiveTab] = useState<QuotifyTab>('config');
     const [prompts, setPrompts] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isEnhancing, setIsEnhancing] = useState(false);
@@ -93,7 +98,7 @@ const QuotifyGenerator: React.FC = () => {
         setError(null);
         setPrompts([]);
         try {
-            const result = await generateQuotifyPrompts(speaker, numPrompts);
+            const result = await generateQuotifyPrompts(speaker, numPrompts, style, focusOnCharacters);
             setPrompts(result);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An unknown error occurred.');
@@ -101,7 +106,7 @@ const QuotifyGenerator: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [speaker, numPrompts]);
+    }, [speaker, numPrompts, style, focusOnCharacters]);
     
     const handleEnhance = useCallback(async () => {
         if (prompts.length === 0) return;
@@ -148,6 +153,9 @@ const QuotifyGenerator: React.FC = () => {
         setNumPrompts(8);
         setPrompts([]);
         setError(null);
+        setStyle(styles[0].value);
+        setFocusOnCharacters(false);
+        setActiveTab('config');
         setCopiedPromptIndex(null);
         setIsAllCopied(false);
     };
@@ -157,6 +165,15 @@ const QuotifyGenerator: React.FC = () => {
 
     return (
         <div className="w-full max-w-4xl mx-auto flex flex-col items-center">
+             <style>{`
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(-10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .animate-fade-in {
+                    animation: fadeIn 0.5s ease-out forwards;
+                }
+            `}</style>
             <ClearProjectButton onClick={handleClear} />
             <div className="w-full bg-slate-800/60 p-8 rounded-lg border border-slate-700">
                 <h1 className="text-5xl font-bold text-yellow-300 text-center mb-2" style={{ fontFamily: 'Georgia, serif' }}>
@@ -165,24 +182,69 @@ const QuotifyGenerator: React.FC = () => {
                 <p className="text-center text-gray-400 mb-4">
                     Select a speaker and number of prompts to generate tailored, high-quality prompts.
                 </p>
-                <p className="text-center text-gray-500 mb-8 text-sm">
-                    <span className="font-semibold text-gray-400">✧</span> API Configuration
-                </p>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <div>
-                        <label htmlFor="speaker-select" className="block text-sm font-medium mb-2 text-gray-300">Choose a Speaker:</label>
-                        <select id="speaker-select" value={speaker} onChange={e => setSpeaker(e.target.value)} className={inputClasses}>
-                            {speakers.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label htmlFor="prompts-select" className="block text-sm font-medium mb-2 text-gray-300">Number of Prompts:</label>
-                        <select id="prompts-select" value={numPrompts} onChange={e => setNumPrompts(Number(e.target.value))} className={inputClasses}>
-                            {promptNumbers.map(n => <option key={n} value={n}>{n}</option>)}
-                        </select>
-                    </div>
+                
+                 {/* TABS */}
+                <div className="flex border-b border-slate-700 mb-8 mt-4">
+                    <button onClick={() => setActiveTab('config')} className={`flex-1 py-3 text-sm font-bold transition-colors ${activeTab === 'config' ? 'text-yellow-400 border-b-2 border-yellow-400' : 'text-gray-400 hover:text-gray-200'}`}>
+                        1. Configuration
+                    </button>
+                    <button onClick={() => setActiveTab('style')} className={`flex-1 py-3 text-sm font-bold transition-colors ${activeTab === 'style' ? 'text-yellow-400 border-b-2 border-yellow-400' : 'text-gray-400 hover:text-gray-200'}`}>
+                        2. Style & Options
+                    </button>
                 </div>
+
+                {activeTab === 'config' && (
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 animate-fade-in">
+                        <div>
+                            <label htmlFor="speaker-select" className="block text-sm font-medium mb-2 text-gray-300">Choose a Speaker:</label>
+                            <select id="speaker-select" value={speaker} onChange={e => setSpeaker(e.target.value)} className={inputClasses}>
+                                {speakers.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="prompts-select" className="block text-sm font-medium mb-2 text-gray-300">Number of Prompts:</label>
+                            <select id="prompts-select" value={numPrompts} onChange={e => setNumPrompts(Number(e.target.value))} className={inputClasses}>
+                                {promptNumbers.map(n => <option key={n} value={n}>{n}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                )}
+                
+                {activeTab === 'style' && (
+                    <div className="space-y-8 mb-8 animate-fade-in">
+                        <div>
+                             <label className="block text-sm font-medium mb-2 text-gray-300">Choose a Style:</label>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                {styles.map(styleOpt => (
+                                    <button 
+                                        key={styleOpt.name} 
+                                        onClick={() => setStyle(styleOpt.value)} 
+                                        disabled={isLoading}
+                                        className={`px-3 py-2 text-sm font-semibold rounded-md transition w-full disabled:opacity-50 ${style === styleOpt.value ? 'bg-yellow-500 text-slate-900' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>
+                                        {styleOpt.name}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="relative flex items-start p-4 bg-slate-900/50 rounded-lg border border-slate-700">
+                            <div className="flex h-6 items-center">
+                                <input 
+                                    id="focusOnCharacters" 
+                                    type="checkbox" 
+                                    checked={focusOnCharacters} 
+                                    onChange={(e) => setFocusOnCharacters(e.target.checked)} 
+                                    className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-600"
+                                />
+                            </div>
+                            <div className="ml-3 text-sm">
+                                <label htmlFor="focusOnCharacters" className="font-medium text-gray-300">
+                                    Put strong focus on the characters and faces in every shot so they are clear. Please keep/retain them as they are.
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <button
                     onClick={handleSubmit}

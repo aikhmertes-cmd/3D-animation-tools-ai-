@@ -227,33 +227,40 @@ const SceneItem: React.FC<SceneItemProps> = ({ scene }) => {
     );
 
     return (
-        <div className="bg-black rounded-lg p-4 font-mono text-sm text-lime-300 border border-gray-700">
-            <pre className="whitespace-pre-wrap break-words"><code>{JSON.stringify(scene, null, 2)}</code></pre>
-            <div className="mt-3 pt-3 border-t border-gray-600/50 flex flex-wrap items-center justify-between gap-2 font-sans">
-                <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-gray-400">VOICE OVER:</span>
-                    {renderButton('narration', isNarrationLoading, narrationAudio, handleGenerateNarration, playAudio)}
-                    {narrationAudio && (
-                        <button
-                            onClick={handleDownloadNarration}
-                            title="Download Narration"
-                            className="flex items-center justify-center p-2 text-white bg-gray-700 rounded-md shadow-sm hover:bg-gray-600 transition-all duration-200"
-                        >
-                            <DownloadIcon />
-                        </button>
-                    )}
-                    {renderButton('dialog', isDialogLoading, dialogAudio, handleGenerateDialog, playAudio, !canGenerateDialog)}
+        <div className="bg-gray-800/70 rounded-lg p-4 border border-gray-700">
+            <div className="flex justify-between items-start mb-3">
+                <div>
+                    <h3 className="font-bold text-lg text-cyan-400">Scene {scene.scene_number}: {scene.title}</h3>
+                    <p className="text-sm text-gray-400 font-mono">{scene.slug}</p>
                 </div>
-                 <div className="flex items-center gap-2">
-                     <button onClick={handleCopyPrompt} className="flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-gray-700 rounded-md shadow-sm hover:bg-gray-600 transition-all duration-200">
-                        {promptCopied ? <span className="text-cyan-400">Copied!</span> : <><CopyIcon className="mr-1.5"/> Copy Image Prompt</>}
-                    </button>
-                    <button onClick={handleCopySceneJson} className="flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-gray-700 rounded-md shadow-sm hover:bg-gray-600 transition-all duration-200">
-                        {sceneJsonCopied ? <span className="text-cyan-400">Copied!</span> : <><CopyIcon className="mr-1.5"/> Copy Scene JSON</>}
+                <div className="flex items-center gap-2">
+                    <button onClick={handleCopyPrompt} title="Copy Image Prompt" className="p-2 text-gray-400 bg-gray-700 rounded-md hover:bg-gray-600 hover:text-white transition">
+                        {promptCopied ? <span className="text-xs text-cyan-300">Copied!</span> : <CopyIcon />}
                     </button>
                 </div>
             </div>
-             {error && <p className="mt-2 text-xs text-red-400 font-sans text-center">{error}</p>}
+
+            <div className="space-y-3 text-sm">
+                <p><strong className="text-gray-400">📝 Prompt:</strong> {scene.prompt}</p>
+                <p><strong className="text-gray-400">🎤 Narration:</strong> {scene.scene_description.line}</p>
+                {scene.dialog.map((d, i) => (
+                    <p key={i}><strong className="text-purple-400">{d.character}:</strong> {d.line}</p>
+                ))}
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-gray-600/50 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                    {renderButton('narration', isNarrationLoading, narrationAudio, handleGenerateNarration, playAudio)}
+                    {narrationAudio && (
+                        <button onClick={handleDownloadNarration} title="Download Narration" className="p-2 text-white bg-gray-700 rounded-md shadow-sm hover:bg-gray-600 transition"><DownloadIcon /></button>
+                    )}
+                    {renderButton('dialog', isDialogLoading, dialogAudio, handleGenerateDialog, playAudio, !canGenerateDialog)}
+                </div>
+                <button onClick={handleCopySceneJson} className="flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-gray-700 rounded-md shadow-sm hover:bg-gray-600 transition">
+                    {sceneJsonCopied ? <span className="text-cyan-300">Copied!</span> : <><CopyIcon className="mr-1.5 h-4 w-4"/> Copy Scene JSON</>}
+                </button>
+            </div>
+            {error && <p className="mt-2 text-xs text-red-400 text-center">{error}</p>}
         </div>
     );
 };
@@ -266,6 +273,7 @@ interface StoryPanelProps {
 }
 
 const StoryPanel: React.FC<StoryPanelProps> = ({ story, isLoading }) => {
+    const [viewMode, setViewMode] = useState<'scenes' | 'json'>('scenes');
     const [copyStatus, setCopyStatus] = useState<'idle' | 'copiedJson' | 'copiedMin'>('idle');
 
     const handleCopy = (minified: boolean) => {
@@ -313,6 +321,11 @@ const StoryPanel: React.FC<StoryPanelProps> = ({ story, isLoading }) => {
                 <h2 className="text-lg font-semibold text-gray-300">Generated Story</h2>
                 {story && (
                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 bg-gray-900 p-1 rounded-lg border border-gray-700">
+                            <button onClick={() => setViewMode('scenes')} className={`px-3 py-1 text-xs font-semibold rounded-md transition ${viewMode === 'scenes' ? 'bg-cyan-600 text-white' : 'text-gray-300'}`}>Scenes</button>
+                            <button onClick={() => setViewMode('json')} className={`px-3 py-1 text-xs font-semibold rounded-md transition ${viewMode === 'json' ? 'bg-cyan-600 text-white' : 'text-gray-300'}`}>JSON Code</button>
+                        </div>
+                        <div className="h-6 w-px bg-gray-600"></div>
                          <button onClick={handleDownloadAll} className="flex items-center px-3 py-1.5 text-sm font-semibold text-white bg-emerald-600 rounded-md shadow-sm hover:bg-emerald-500 transition-all duration-200">
                              <DownloadIcon className="mr-1.5 h-4 w-4" />
                              All Scenes
@@ -333,10 +346,16 @@ const StoryPanel: React.FC<StoryPanelProps> = ({ story, isLoading }) => {
                         <p className="text-white mt-2 text-sm">Crafting your story...</p>
                     </div>
                 ) : story ? (
-                    <div className="w-full h-full overflow-y-auto p-2 space-y-4" style={{ scrollbarWidth: 'thin' }}>
-                        {story.map((scene) => (
-                            <SceneItem key={scene.scene_number} scene={scene} />
-                        ))}
+                    <div className="w-full h-full overflow-y-auto p-2" style={{ scrollbarWidth: 'thin' }}>
+                        {viewMode === 'scenes' ? (
+                            <div className="space-y-4">
+                                {story.map((scene) => (
+                                    <SceneItem key={scene.scene_number} scene={scene} />
+                                ))}
+                            </div>
+                        ) : (
+                            <pre className="whitespace-pre-wrap break-words p-4 font-mono text-sm text-lime-300"><code>{JSON.stringify(story, null, 2)}</code></pre>
+                        )}
                     </div>
                 ) : (
                     <div className="m-auto text-center text-gray-500">

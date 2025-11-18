@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { generateVideo } from '../services/geminiService';
-import VideoPanel from './VideoPanel';
-import VideoOptionsSelector, { VideoAspectRatio, Resolution } from './VideoOptionsSelector';
+import VideoPanel from './VideoPanel.tsx';
+import VideoOptionsSelector, { VideoAspectRatio, Resolution } from './VideoOptionsSelector.tsx';
 
 // --- Helper Components ---
 
@@ -63,11 +63,6 @@ const AnimationGenerator: React.FC = () => {
     const [resolution, setResolution] = useState<Resolution>('720p');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [isKeySelected, setIsKeySelected] = useState(false);
-
-    useEffect(() => {
-        window.aistudio?.hasSelectedApiKey().then(setIsKeySelected);
-    }, []);
     
     useEffect(() => {
         return () => {
@@ -76,14 +71,6 @@ const AnimationGenerator: React.FC = () => {
             }
         };
     }, [videoBlobUrl]);
-
-    const handleSelectKey = async () => {
-        if(window.aistudio) {
-            await window.aistudio.openSelectKey();
-            setIsKeySelected(true);
-            setError(null);
-        }
-    };
 
     const handleSubmit = useCallback(async () => {
         if (!prompt.trim()) {
@@ -103,9 +90,6 @@ const AnimationGenerator: React.FC = () => {
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
             setError(errorMessage);
-            if (errorMessage.includes('not found') || errorMessage.includes('API key')) {
-                setIsKeySelected(false);
-            }
             console.error(err);
         } finally {
             setIsLoading(false);
@@ -127,36 +111,21 @@ const AnimationGenerator: React.FC = () => {
         setPrompt(prev => prev ? `${prev}, ${styleValue}` : styleValue);
     };
 
-    if (!isKeySelected) {
-        return (
-            <div className="w-full max-w-2xl mx-auto text-center bg-gray-800/50 p-8 rounded-lg border border-gray-700">
-                <h2 className="text-2xl font-bold text-cyan-400 mb-4">API Key Required</h2>
-                <p className="text-gray-300 mb-6">3D Animation generation with Veo requires a dedicated API key. Please select one to proceed.</p>
-                <button
-                    onClick={handleSelectKey}
-                    className="inline-flex items-center justify-center px-6 py-3 font-semibold text-white bg-gradient-to-r from-purple-500 to-cyan-500 rounded-lg shadow-lg border-b-4 border-purple-700 hover:from-purple-600 hover:to-cyan-600 transform transition-all duration-200 active:translate-y-0.5 active:border-b-2"
-                >
-                    <span className="text-xl mr-2">🔑</span>
-                    Select API Key
-                </button>
-                 {error && <p className="text-red-400 mt-4">{error}</p>}
-                 <p className="text-sm text-gray-500 mt-4">
-                    For more information on billing, visit the{' '}
-                    <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">
-                        official documentation
-                    </a>.
-                </p>
-            </div>
-        );
-    }
-
     return (
         <div className="w-full max-w-5xl mx-auto flex flex-col items-center">
             <ClearProjectButton onClick={handleClear} />
             <VideoPanel title="Generated 3D Animation" videoUrl={videoBlobUrl} isLoading={isLoading} />
             {error && (
-                <div className="my-4 p-3 w-full text-center bg-red-900/50 border border-red-700 text-red-300 rounded-lg">
-                    {error}
+                <div className="my-4 p-4 w-full text-center bg-red-950/60 border border-red-700 text-red-200 rounded-lg">
+                    <p>{error}</p>
+                    {error.includes('Requested entity was not found') && (
+                        <button
+                            onClick={() => window.dispatchEvent(new CustomEvent('openApiKeyModal'))}
+                            className="mt-3 px-4 py-2 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-md transition"
+                        >
+                            Select a valid key
+                        </button>
+                    )}
                 </div>
             )}
             <div className="sticky bottom-0 left-0 right-0 w-full bg-gray-800/80 backdrop-blur-lg border-t border-gray-700 p-4 rounded-t-lg">

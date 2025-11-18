@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { translateText, generateVoiceover } from '../services/geminiService';
-import type { PrebuiltVoice } from '../services/geminiService';
+import { translateText, generateVoiceover } from '../services/geminiService.ts';
+import type { PrebuiltVoice } from '../services/geminiService.ts';
 
 // --- Reusable Helper Components ---
 
@@ -87,13 +87,12 @@ interface CharacterType {
 };
 
 const characterTypes: CharacterType[] = [
-  { name: 'ក្មេងប្រុស', emoji: '👦', description: 'សំឡេងសប្បាយរីករាយ, ពូកែចលនា, មានភាពចង់ដឹងចង់ឃើញ។', voice: 'Puck' },
-  { name: 'ក្មេងស្រី', emoji: '👧', description: 'សំឡេងទន់ភ្លន់, មានភាពអរអើពេញចិត្ត, អាចជាស្មោះស្អាត ឬក្មេងស្លូតបូត។', voice: 'Zephyr' },
-  { name: 'លោកតា', emoji: '👴', description: 'សំឡេងជ្រៅ, ធ្ងន់ធ្ងរ, មានបទពិសោធន៍, ក្លិនអារម្មណ៍ដូចជាមនុស្សចាស់មានគំនិត។', voice: 'Fenrir' },
-  { name: 'លោកយាយ', emoji: '👵', description: 'សំឡេងទន់ទៀង, មានភាពស្រលាញ់ យកចិត្តទុកដាក់ និងថ្នមថ្នាយ។', voice: 'Charon' },
-  { name: 'លោកពូ / អ្នកមឹង', emoji: '🧓', description: 'សំឡេងស្លូតបូត ប៉ុន្តែអាចមានភាពកំប្លែង ឬប្រុងប្រយត្ន។', voice: 'Kore' },
-  { name: 'កំលោះ', emoji: '👨', description: 'សំឡេងខ្ជាប់ខ្ជួន, មានទំនុកចិត្ត, ក្លាហាន។', voice: 'Kore' },
-  { name: 'ក្រមុំ', emoji: '👩', description: 'សំឡេងទន់ភ្លន់, មានភាពស្រលាញ់ ឬអៀនខ្មាស់។', voice: 'Charon' },
+  { name: 'លោកតា', emoji: '👴', description: 'like a wise, old grandfather', voice: 'Fenrir' },
+  { name: 'លោកយាយ', emoji: '👵', description: 'like a gentle, old grandmother', voice: 'Zephyr' },
+  { name: 'លោកពូ', emoji: '👨‍🦳', description: 'like a friendly, middle-aged uncle', voice: 'Kore' },
+  { name: 'អ្នកមីង', emoji: '👩‍🦳', description: 'like a friendly, middle-aged aunt', voice: 'Zephyr' },
+  { name: 'កំលោះ', emoji: '👨', description: 'like a confident young man', voice: 'Kore' },
+  { name: 'ក្រមុំ', emoji: '👩', description: 'like a sweet young woman', voice: 'Zephyr' },
 ];
 
 interface VoiceEmotion {
@@ -104,16 +103,17 @@ interface VoiceEmotion {
 }
 
 const voiceEmotions: VoiceEmotion[] = [
-  { name: 'សប្បាយរីករាយ', emoji: '😄', description: 'សំឡេងមានថាមពល ខ្ពស់បន្តិច', promptKeyword: 'cheerfully' },
-  { name: 'ព្រួយសោក', emoji: '😢', description: 'សំឡេងទន់ ធ្លាក់ស្ទើរលើទឹកភ្នែក', promptKeyword: 'sadly' },
-  { name: 'ខឹង', emoji: '😡', description: 'សំឡេងខ្ពស់ តឹងរឹង ឬលឿន', promptKeyword: 'angrily' },
-  { name: 'ភ័យ', emoji: '😨', description: 'សំឡេងខ្សោយ ខ្លីៗ ឬដង្ហើមលឿន', promptKeyword: 'fearfully' },
-  { name: 'ស្រឡាញ់', emoji: '😍', description: 'សំឡេងទន់ អៀន ឬមានស្នាមញញឹម', promptKeyword: 'lovingly' },
+  { name: 'សប្បាយរីករាយ', emoji: '😄', description: 'សំឡេងមានថាមពល ខ្ពស់បន្តិច', promptKeyword: 'in a cheerful tone' },
+  { name: 'ព្រួយសោក', emoji: '😢', description: 'សំឡេងទន់ ធ្លាក់ស្ទើរលើទឹកភ្នែក', promptKeyword: 'in a sad tone' },
+  { name: 'ខឹង', emoji: '😡', description: 'សំឡេងខ្ពស់ តឹងរឹង ឬលឿន', promptKeyword: 'in an angry tone' },
+  { name: 'ស្ងប់អារម្មណ៍', emoji: '😌', description: 'សំឡេងស្រទន់ ស្ងប់ស្ងាត់ ត្រលប់មកធម្មតាវិញ', promptKeyword: 'in a calm and soothing tone' },
+  { name: 'ភ័យ', emoji: '😨', description: 'សំឡេងខ្សោយ ខ្លីៗ ឬដង្ហើមលឿន', promptKeyword: 'in a fearful tone' },
+  { name: 'ស្រឡាញ់', emoji: '😍', description: 'សំឡេងទន់ អៀន ឬមានស្នាមញញឹម', promptKeyword: 'in a loving tone' },
   { name: 'ធម្មតា', emoji: '😐', description: 'សំឡេងធម្មតា មានសមតុល្យ', promptKeyword: 'in a normal, balanced tone' },
-  { name: 'កំប្លែង', emoji: '😂', description: 'សំឡេងលេងសើច ឬបញ្ចេញចំណង់កំប្លែង', promptKeyword: 'humorously' },
+  { name: 'កំប្លែង', emoji: '😂', description: 'សំឡេងលេងសើច ឬបញ្ចេញចំណង់កំប្លែង', promptKeyword: 'in a humorous tone' },
   { name: 'ធ្លាក់ទឹកចិត្ត', emoji: '😔', description: 'សំឡេងទន់ និងយឺតបន្តិច', promptKeyword: 'in a depressed tone' },
-  { name: 'សង្ស័យ', emoji: '🤔', description: 'សំឡេងលើកចំណងសួរ ឬស្ទាក់ស្ទើរ', promptKeyword: 'doubtfully' },
-  { name: 'មានទំនុកចិត្ត', emoji: '😎', description: 'សំឡេងជាអ្នកដឹកនាំ ឬគួរឱ្យគោរព', promptKeyword: 'confidently' },
+  { name: 'សង្ស័យ', emoji: '🤔', description: 'សំឡេងលើកចំណងសួរ ឬស្ទាក់ស្ទើរ', promptKeyword: 'in a doubtful tone' },
+  { name: 'មានទំនុកចិត្ត', emoji: '😎', description: 'សំឡេងជាអ្នកដឹកនាំ ឬគួរឱ្យគោរព', promptKeyword: 'in a confident tone' },
 ];
 
 
@@ -178,7 +178,7 @@ const TranslatedScriptGenerator: React.FC = () => {
         setAudioUrl(null);
 
         try {
-            const base64Audio = await generateVoiceover(textToSpeak, languageToSpeak, selectedChar.voice, selectedEmotion.promptKeyword);
+            const base64Audio = await generateVoiceover(textToSpeak, languageToSpeak, selectedChar.voice, selectedEmotion.promptKeyword, selectedChar.description);
             const pcmBytes = decode(base64Audio);
             const pcmInt16 = new Int16Array(pcmBytes.buffer);
             const wavBlob = pcmToWavBlob(pcmInt16, 1, 24000, 16);

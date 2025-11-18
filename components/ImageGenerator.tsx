@@ -66,15 +66,14 @@ const ImageGenerator: React.FC = () => {
     setPrompt(randomPrompt);
   };
 
-  const handleSelectStyle = (styleName: string) => {
-    const styleSuffix = `${styleName} style`;
+  const handleSelectStyle = (styleValue: string) => {
     setPrompt(prev => {
         // If the style is already present, do nothing.
-        if (prev.toLowerCase().includes(styleSuffix.toLowerCase())) {
+        if (prev.toLowerCase().includes(styleValue.toLowerCase())) {
             return prev;
         }
         // Otherwise, append the new style.
-        return prev.trim() ? `${prev.trim()}, ${styleSuffix}` : styleSuffix;
+        return prev.trim() ? `${prev.trim()}, ${styleValue}` : styleValue;
     });
   };
 

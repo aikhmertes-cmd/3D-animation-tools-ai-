@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode } from 'react';
 
 interface User {
@@ -9,12 +10,17 @@ interface AuthContextType {
   user: User | null;
   login: () => void;
   logout: () => void;
+  // FIX: Add isLicensed and setIsLicensed to provide license status through context.
+  isLicensed: boolean;
+  setIsLicensed: (isLicensed: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  // FIX: Add state to track license status.
+  const [isLicensed, setIsLicensed] = useState<boolean>(false);
 
   // Simulate a login
   const login = () => {
@@ -28,10 +34,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Simulate a logout
   const logout = () => {
     setUser(null);
+    // FIX: Reset license status on logout.
+    setIsLicensed(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    // FIX: Provide license status and setter to context consumers.
+    <AuthContext.Provider value={{ user, login, logout, isLicensed, setIsLicensed }}>
       {children}
     </AuthContext.Provider>
   );

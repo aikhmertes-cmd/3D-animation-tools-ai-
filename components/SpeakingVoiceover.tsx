@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { generateVoiceover } from '../services/geminiService';
-import type { PrebuiltVoice } from '../services/geminiService';
+import { generateVoiceover, translateText } from '../services/geminiService.ts';
+import type { PrebuiltVoice } from '../services/geminiService.ts';
 
 // --- Component Specific Constants ---
 
@@ -12,13 +12,12 @@ interface CharacterType {
 };
 
 const characterTypes: CharacterType[] = [
-  { name: 'ក្មេងប្រុស', emoji: '👦', description: 'សំឡេងសប្បាយរីករាយ, ពូកែចលនា, មានភាពចង់ដឹងចង់ឃើញ។', voice: 'Puck' },
-  { name: 'ក្មេងស្រី', emoji: '👧', description: 'សំឡេងទន់ភ្លន់, មានភាពអរអើពេញចិត្ត, អាចជាស្មោះស្អាត ឬក្មេងស្លូតបូត។', voice: 'Zephyr' },
-  { name: 'លោកតា', emoji: '👴', description: 'សំឡេងជ្រៅ, ធ្ងន់ធ្ងរ, មានបទពិសោធន៍, ក្លិនអារម្មណ៍ដូចជាមនុស្សចាស់មានគំនិត។', voice: 'Fenrir' },
-  { name: 'លោកយាយ', emoji: '👵', description: 'សំឡេងទន់ទៀង, មានភាពស្រលាញ់ យកចិត្តទុកដាក់ និងថ្នមថ្នាយ។', voice: 'Charon' },
-  { name: 'លោកពូ / អ្នកមឹង', emoji: '🧓', description: 'សំឡេងស្លូតបូត ប៉ុន្តែអាចមានភាពកំប្លែង ឬប្រុងប្រយត្ន។', voice: 'Kore' },
-  { name: 'កំលោះ', emoji: '👨', description: 'សំឡេងខ្ជាប់ខ្ជួន, មានទំនុកចិត្ត, ក្លាហាន។', voice: 'Kore' },
-  { name: 'ក្រមុំ', emoji: '👩', description: 'សំឡេងទន់ភ្លន់, មានភាពស្រលាញ់ ឬអៀនខ្មាស់។', voice: 'Charon' },
+  { name: 'លោកតា', emoji: '👴', description: 'like a wise, old grandfather', voice: 'Fenrir' },
+  { name: 'លោកយាយ', emoji: '👵', description: 'like a gentle, old grandmother', voice: 'Zephyr' },
+  { name: 'លោកពូ', emoji: '👨‍🦳', description: 'like a friendly, middle-aged uncle', voice: 'Kore' },
+  { name: 'អ្នកមីង', emoji: '👩‍🦳', description: 'like a friendly, middle-aged aunt', voice: 'Zephyr' },
+  { name: 'កំលោះ', emoji: '👨', description: 'like a confident young man', voice: 'Kore' },
+  { name: 'ក្រមុំ', emoji: '👩', description: 'like a sweet young woman', voice: 'Zephyr' },
 ];
 
 interface VoiceEmotion {
@@ -29,16 +28,30 @@ interface VoiceEmotion {
 }
 
 const voiceEmotions: VoiceEmotion[] = [
-  { name: 'សប្បាយរីករាយ', emoji: '😄', description: 'សំឡេងមានថាមពល ខ្ពស់បន្តិច', promptKeyword: 'cheerfully' },
-  { name: 'ព្រួយសោក', emoji: '😢', description: 'សំឡេងទន់ ធ្លាក់ស្ទើរលើទឹកភ្នែក', promptKeyword: 'sadly' },
-  { name: 'ខឹង', emoji: '😡', description: 'សំឡេងខ្ពស់ តឹងរឹង ឬលឿន', promptKeyword: 'angrily' },
-  { name: 'ភ័យ', emoji: '😨', description: 'សំឡេងខ្សោយ ខ្លីៗ ឬដង្ហើមលឿន', promptKeyword: 'fearfully' },
-  { name: 'ស្រឡាញ់', emoji: '😍', description: 'សំឡេងទន់ អៀន ឬមានស្នាមញញឹម', promptKeyword: 'lovingly' },
+  { name: 'សប្បាយរីករាយ', emoji: '😄', description: 'សំឡេងមានថាមពល ខ្ពស់បន្តិច', promptKeyword: 'in a cheerful tone' },
+  { name: 'ព្រួយសោក', emoji: '😢', description: 'សំឡេងទន់ ធ្លាក់ស្ទើរលើទឹកភ្នែក', promptKeyword: 'in a sad tone' },
+  { name: 'ខឹង', emoji: '😡', description: 'សំឡេងខ្ពស់ តឹងរឹង ឬលឿន', promptKeyword: 'in an angry tone' },
+  { name: 'ស្ងប់អារម្មណ៍', emoji: '😌', description: 'សំឡេងស្រទន់ ស្ងប់ស្ងាត់ ត្រលប់មកធម្មតាវិញ', promptKeyword: 'in a calm and soothing tone' },
+  { name: 'ភ័យ', emoji: '😨', description: 'សំឡេងខ្សោយ ខ្លីៗ ឬដង្ហើមលឿន', promptKeyword: 'in a fearful tone' },
+  { name: 'ស្រឡាញ់', emoji: '😍', description: 'សំឡេងទន់ អៀន ឬមានស្នាមញញឹម', promptKeyword: 'in a loving tone' },
   { name: 'ធម្មតា', emoji: '😐', description: 'សំឡេងធម្មតា មានសមតុល្យ', promptKeyword: 'in a normal, balanced tone' },
-  { name: 'កំប្លែង', emoji: '😂', description: 'សំឡេងលេងសើច ឬបញ្ចេញចំណង់កំប្លែង', promptKeyword: 'humorously' },
+  { name: 'កំប្លែង', emoji: '😂', description: 'សំឡេងលេងសើច ឬបញ្ចេញចំណង់កំប្លែង', promptKeyword: 'in a humorous tone' },
   { name: 'ធ្លាក់ទឹកចិត្ត', emoji: '😔', description: 'សំឡេងទន់ និងយឺតបន្តិច', promptKeyword: 'in a depressed tone' },
-  { name: 'សង្ស័យ', emoji: '🤔', description: 'សំឡេងលើកចំណងសួរ ឬស្ទាក់ស្ទើរ', promptKeyword: 'doubtfully' },
-  { name: 'មានទំនុកចិត្ត', emoji: '😎', description: 'សំឡេងជាអ្នកដឹកនាំ ឬគួរឱ្យគោរព', promptKeyword: 'confidently' },
+  { name: 'សង្ស័យ', emoji: '🤔', description: 'សំឡេងលើកចំណងសួរ ឬស្ទាក់ស្ទើរ', promptKeyword: 'in a doubtful tone' },
+  { name: 'មានទំនុកចិត្ត', emoji: '😎', description: 'សំឡេងជាអ្នកដឹកនាំ ឬគួរឱ្យគោរព', promptKeyword: 'in a confident tone' },
+];
+
+const languages = [
+  { code: 'Khmer', name: '🇰🇭 Khmer' },
+  { code: 'English', name: '🇬🇧 English' },
+  { code: 'Japanese', name: '🇯🇵 Japanese' },
+  { code: 'Korean', name: '🇰🇷 Korean' },
+  { code: 'French', name: '🇫🇷 French' },
+  { code: 'Indonesian', name: '🇮🇩 Indonesian' },
+  { code: 'Chinese', name: '🇨🇳 Chinese' },
+  { code: 'Filipino', name: '🇵🇭 Filipino' },
+  { code: 'Malay', name: '🇸🇬 Malay' },
+  { code: 'Hindi', name: '🇮🇳 Hindi' },
 ];
 
 
@@ -103,12 +116,16 @@ const pcmToWavBlob = (pcmData: Int16Array, numChannels: number, sampleRate: numb
 
 const SpeakingVoiceover: React.FC = () => {
     const [prompt, setPrompt] = useState('');
-    const [language, setLanguage] = useState<'km' | 'en'>('km');
-    const [selectedChar, setSelectedChar] = useState<CharacterType>(characterTypes[4]); // Default to a neutral adult voice
+    const [translatedScript, setTranslatedScript] = useState('');
+    const [sourceLang, setSourceLang] = useState('Khmer');
+    const [targetLang, setTargetLang] = useState('English');
+    const [selectedChar, setSelectedChar] = useState<CharacterType>(characterTypes[2]); // Default to a neutral adult voice
     const [selectedEmotion, setSelectedEmotion] = useState<VoiceEmotion>(voiceEmotions[5]); // Default to 'normal'
-    const [isLoading, setIsLoading] = useState(false);
+    const [isTranslating, setIsTranslating] = useState(false);
+    const [isGeneratingVoice, setIsGeneratingVoice] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [audioUrl, setAudioUrl] = useState<string | null>(null);
+    const [copied, setCopied] = useState(false);
     const audioRef = useRef<HTMLAudioElement>(null);
 
     useEffect(() => {
@@ -120,19 +137,45 @@ const SpeakingVoiceover: React.FC = () => {
         };
     }, [audioUrl]);
 
-    const handleGenerate = useCallback(async () => {
+    const handleTranslate = useCallback(async () => {
         if (!prompt.trim()) {
-            setError('Please paste your full prompt to generate a voiceover.');
+            setError('Please enter a script to translate.');
+            return;
+        }
+        if (sourceLang === targetLang) {
+            setError('Source and target languages must be different.');
+            return;
+        }
+        setIsTranslating(true);
+        setError(null);
+        setTranslatedScript('');
+        try {
+            const result = await translateText(prompt, sourceLang, targetLang);
+            setTranslatedScript(result);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'An unknown error occurred during translation.');
+        } finally {
+            setIsTranslating(false);
+        }
+    }, [prompt, sourceLang, targetLang]);
+
+
+    const handleGenerateVoiceover = useCallback(async () => {
+        const textToSpeak = translatedScript.trim() || prompt.trim();
+        const languageToSpeak = translatedScript.trim() ? targetLang : sourceLang;
+        
+        if (!textToSpeak) {
+            setError('Please enter a script to generate a voiceover.');
             return;
         }
 
-        setIsLoading(true);
+        setIsGeneratingVoice(true);
         setError(null);
         if (audioUrl) URL.revokeObjectURL(audioUrl);
         setAudioUrl(null);
 
         try {
-            const base64Audio = await generateVoiceover(prompt, language, selectedChar.voice, selectedEmotion.promptKeyword);
+            const base64Audio = await generateVoiceover(textToSpeak, languageToSpeak, selectedChar.voice, selectedEmotion.promptKeyword, selectedChar.description);
             
             const pcmBytes = decode(base64Audio);
             const pcmInt16 = new Int16Array(pcmBytes.buffer);
@@ -147,18 +190,26 @@ const SpeakingVoiceover: React.FC = () => {
             setError(err instanceof Error ? err.message : 'An unknown error occurred.');
             console.error(err);
         } finally {
-            setIsLoading(false);
+            setIsGeneratingVoice(false);
         }
-    }, [prompt, language, audioUrl, selectedChar, selectedEmotion]);
+    }, [prompt, translatedScript, sourceLang, targetLang, audioUrl, selectedChar, selectedEmotion]);
     
     useEffect(() => {
         if (audioUrl && audioRef.current) {
             audioRef.current.play();
         }
     }, [audioUrl]);
+    
+    const handleCopy = () => {
+        if (!translatedScript) return;
+        navigator.clipboard.writeText(translatedScript);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
 
     const handleClear = () => {
         setPrompt('');
+        setTranslatedScript('');
         setError(null);
         if (audioUrl) {
             URL.revokeObjectURL(audioUrl);
@@ -166,28 +217,48 @@ const SpeakingVoiceover: React.FC = () => {
         setAudioUrl(null);
     };
 
-    return (
-        <div className="w-full max-w-4xl mx-auto flex flex-col items-center">
-            <ClearProjectButton onClick={handleClear} />
-            <div className="w-full bg-gray-800/50 p-6 rounded-lg border border-gray-700 space-y-6">
-                <div className="text-center">
-                    <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400">Speaking Voiceover</h2>
-                    <p className="text-gray-400 mt-2">Paste your full prompt and convert it to a high-quality speaking voiceover.</p>
-                </div>
+    const isLoading = isTranslating || isGeneratingVoice;
 
-                <div>
-                    <label htmlFor="vo-prompt" className="block text-sm font-semibold mb-2 text-gray-300">Full Prompt</label>
-                    <textarea
-                        id="vo-prompt"
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="Paste your script or prompt here..."
-                        className="bg-gray-700 border border-gray-600 text-white text-base rounded-lg focus:ring-cyan-500 focus:border-cyan-500 block w-full p-4 h-48 resize-y"
-                        disabled={isLoading}
-                    />
+    return (
+        <div className="w-full max-w-7xl mx-auto flex flex-col items-center">
+            <ClearProjectButton onClick={handleClear} />
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="bg-gray-800/50 rounded-lg p-4 flex flex-col border border-gray-700 h-[300px]">
+                    <h2 className="text-lg font-semibold text-gray-300 mb-2">Paste Script / Prompt</h2>
+                    <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Enter your script here..." className="flex-grow w-full bg-gray-900 text-gray-200 rounded-md p-3 resize-y border border-gray-600 focus:ring-2 focus:ring-cyan-500 focus:outline-none" disabled={isLoading}></textarea>
+                </div>
+                <div className="bg-gray-800/50 rounded-lg p-4 flex flex-col border border-gray-700 h-[300px]">
+                     <div className="flex justify-between items-center mb-2">
+                        <h2 className="text-lg font-semibold text-gray-300">Translated Script & Voiceover</h2>
+                        <button onClick={handleCopy} disabled={!translatedScript.trim()} className="flex items-center gap-2 px-3 py-1 text-xs font-semibold text-white bg-gray-600 rounded-md shadow-sm hover:bg-gray-500 transition disabled:opacity-50">
+                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                            {copied ? 'Copied!' : 'Copy'}
+                        </button>
+                    </div>
+                    <textarea value={translatedScript} readOnly placeholder="Translation will appear here..." className="flex-grow w-full bg-gray-900 text-gray-200 rounded-md p-3 resize-y border border-gray-600 focus:outline-none cursor-default"></textarea>
+                     {audioUrl && <audio ref={audioRef} controls src={audioUrl} className="w-full mt-2 h-10" />}
+                </div>
+            </div>
+             {error && (
+                <div className="my-2 p-3 text-center bg-red-900/50 border border-red-700 text-red-300 rounded-lg">
+                    {error}
+                </div>
+            )}
+            <div className="sticky bottom-0 left-0 right-0 w-full bg-gray-800/80 backdrop-blur-lg border-t border-gray-700 p-4 rounded-t-lg space-y-4">
+                <div className="flex items-center gap-2">
+                    <select value={sourceLang} onChange={e => setSourceLang(e.target.value)} className="w-full bg-gray-700 text-gray-200 border border-gray-600 rounded-md p-2.5 focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                        {languages.map(lang => <option key={lang.code} value={lang.code}>{lang.name}</option>)}
+                    </select>
+                    <span className="text-gray-400">to</span>
+                    <select value={targetLang} onChange={e => setTargetLang(e.target.value)} className="w-full bg-gray-700 text-gray-200 border border-gray-600 rounded-md p-2.5 focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                        {languages.map(lang => <option key={lang.code} value={lang.code}>{lang.name}</option>)}
+                    </select>
+                    <button onClick={handleTranslate} disabled={isLoading || !prompt} className="px-4 py-2.5 font-semibold text-white bg-cyan-600 rounded-lg shadow-md hover:bg-cyan-500 disabled:opacity-50 transition">
+                        {isTranslating ? <Spinner className="m-auto h-5 w-5"/> : 'Translate'}
+                    </button>
                 </div>
                 
-                 <div>
+                <div>
                     <h3 className="text-sm font-semibold text-center mb-2 text-gray-300">🎭 ប្រភេទតួអង្គ (Character Types)</h3>
                     <div className="grid grid-cols-4 lg:grid-cols-7 gap-2">
                         {characterTypes.map(char => (
@@ -211,43 +282,24 @@ const SpeakingVoiceover: React.FC = () => {
                     </div>
                 </div>
 
-                <div>
-                    <label className="block text-sm font-semibold mb-2 text-gray-300">Choose Sound Version</label>
-                    <div className="flex items-center gap-2 bg-gray-700 p-1 rounded-lg">
-                        <button onClick={() => setLanguage('km')} disabled={isLoading} className={`w-full px-3 py-2 text-sm font-semibold rounded-md transition ${language === 'km' ? 'bg-purple-500 text-white' : 'text-gray-300'}`}>Khmer Sound</button>
-                        <button onClick={() => setLanguage('en')} disabled={isLoading} className={`w-full px-3 py-2 text-sm font-semibold rounded-md transition ${language === 'en' ? 'bg-purple-500 text-white' : 'text-gray-300'}`}>English Sound</button>
-                    </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-gray-700 pt-4">
+                     <button
+                        onClick={handleGenerateVoiceover}
+                        disabled={isLoading || !prompt.trim()}
+                        className="w-full flex items-center justify-center px-6 py-3 font-semibold text-white bg-gradient-to-r from-purple-500 to-cyan-500 rounded-lg shadow-lg border-b-4 border-purple-700 hover:from-purple-600 hover:to-cyan-600 transform transition-all duration-200 active:translate-y-0.5 active:border-b-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isGeneratingVoice ? <><Spinner /> Generating...</> : <><span className="text-xl mr-2">▶️</span><span>Start / Convert to Speaking Voiceover</span></>}
+                    </button>
+                    <a
+                        href={audioUrl ?? '#'}
+                        download={`speaking-voiceover-${Date.now()}.wav`}
+                        className={`w-full flex items-center justify-center px-6 py-2.5 font-semibold text-white bg-gray-600 rounded-lg shadow-lg border-b-4 border-gray-800 hover:bg-gray-500 transform transition-all duration-200 active:translate-y-0.5 active:border-b-2 ${!audioUrl ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        onClick={(e) => !audioUrl && e.preventDefault()}
+                    >
+                         <span className="text-xl mr-2">💾</span>
+                         Download Speaking Sound
+                    </a>
                 </div>
-
-                 {error && (
-                    <div className="my-2 p-3 w-full text-center bg-red-900/50 border border-red-700 text-red-300 rounded-lg">
-                        {error}
-                    </div>
-                )}
-                
-                {audioUrl && (
-                     <div className="space-y-4 pt-4 border-t border-gray-700">
-                        <audio ref={audioRef} controls src={audioUrl} className="w-full">
-                            Your browser does not support the audio element.
-                        </audio>
-                        <a
-                            href={audioUrl}
-                            download={`speaking-voiceover-${Date.now()}.wav`}
-                            className="w-full flex items-center justify-center px-6 py-2.5 font-semibold text-white bg-gray-600 rounded-lg shadow-lg border-b-4 border-gray-800 hover:bg-gray-500 transform transition-all duration-200 active:translate-y-0.5 active:border-b-2"
-                        >
-                             <span className="text-xl mr-2">💾</span>
-                             Download Speaking Sound
-                        </a>
-                    </div>
-                )}
-
-                <button
-                    onClick={handleGenerate}
-                    disabled={isLoading || !prompt.trim()}
-                    className="w-full flex items-center justify-center px-6 py-3 font-semibold text-white bg-gradient-to-r from-purple-500 to-cyan-500 rounded-lg shadow-lg border-b-4 border-purple-700 hover:from-purple-600 hover:to-cyan-600 transform transition-all duration-200 active:translate-y-0.5 active:border-b-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    {isLoading ? <><Spinner /> Converting...</> : <><span className="text-xl mr-2">▶️</span><span>Start / Convert to Speaking Voiceover</span></>}
-                </button>
             </div>
         </div>
     );

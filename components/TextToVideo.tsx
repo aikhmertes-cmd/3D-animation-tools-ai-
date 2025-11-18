@@ -73,8 +73,16 @@ const TextToVideo: React.FC = () => {
             <ClearProjectButton onClick={handleClear} />
             <VideoPanel title="Generated Video" videoUrl={videoBlobUrl} isLoading={isLoading} />
             {error && (
-                <div className="my-4 p-3 w-full text-center bg-red-900/50 border border-red-700 text-red-300 rounded-lg">
-                    {error}
+                <div className="my-4 p-4 w-full text-center bg-red-950/60 border border-red-700 text-red-200 rounded-lg">
+                    <p>{error}</p>
+                    {error.includes('Requested entity was not found') && (
+                        <button
+                            onClick={() => window.dispatchEvent(new CustomEvent('openApiKeyModal'))}
+                            className="mt-3 px-4 py-2 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-md transition"
+                        >
+                            Select a valid key
+                        </button>
+                    )}
                 </div>
             )}
             <div className="sticky bottom-0 left-0 right-0 w-full bg-gray-800/80 backdrop-blur-lg border-t border-gray-700 p-4 rounded-t-lg">
@@ -84,11 +92,11 @@ const TextToVideo: React.FC = () => {
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
                         placeholder="e.g., A majestic lion wearing a crown, cinematic lighting"
-                        className="w-full bg-gray-700 text-gray-200 placeholder-gray-400 border border-gray-600 rounded-md py-3 px-4 focus:ring-2 focus:ring-cyan-500 focus:outline-none transition duration-200"
+                        className="w-full bg-slate-800 text-gray-200 placeholder-gray-400 border border-slate-700 rounded-md py-3 px-4 focus:ring-2 focus:ring-cyan-500 focus:outline-none transition duration-200"
                         disabled={isLoading}
                         onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleSubmit()}
                     />
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
                         <VideoOptionsSelector
                             aspectRatio={aspectRatio}
                             setAspectRatio={setAspectRatio}
@@ -99,7 +107,7 @@ const TextToVideo: React.FC = () => {
                         <button
                             onClick={handleSubmit}
                             disabled={isLoading || !prompt.trim()}
-                            className="flex items-center justify-center px-6 py-3 font-semibold text-white bg-gradient-to-r from-purple-500 to-cyan-500 rounded-lg shadow-lg border-b-4 border-purple-700 hover:from-purple-600 hover:to-cyan-600 transform transition-all duration-200 active:translate-y-0.5 active:border-b-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex items-center justify-center px-6 py-3 font-semibold text-white bg-gradient-to-r from-purple-500 to-cyan-500 rounded-lg shadow-lg hover:from-purple-600 hover:to-cyan-600 transform transition-all duration-200 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isLoading ? 'Generating...' : (<><span className="text-xl mr-2">🚀</span><span>Generate</span></>)}
                         </button>

@@ -2,10 +2,10 @@ import React, { useState, useCallback } from 'react';
 import { generateTrailerScript } from '../services/geminiService.ts';
 import type { StoryScene } from '../services/geminiService.ts';
 import StoryPanel from './StoryPanel.tsx';
+import { styles } from './styles.ts';
 
 type TrailerGenre = 'Action' | 'Comedy' | 'Drama' | 'Sci-Fi' | 'Horror' | 'Thriller' | 'Romance' | 'Fantasy';
 type TrailerTone = 'Epic' | 'Humorous' | 'Tense' | 'Emotional' | 'Mysterious' | 'Inspiring';
-type TrailerVisualStyle = 'Cinematic' | 'Gritty Realism' | 'Stylized & Vibrant' | 'Vintage Film' | 'Found Footage' | '80s Retro';
 
 const ClearProjectButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
     <div className="w-full flex justify-end mb-4">
@@ -25,11 +25,15 @@ const MovieTrailerGenerator: React.FC = () => {
     const [synopsis, setSynopsis] = useState('');
     const [genre, setGenre] = useState<TrailerGenre>('Action');
     const [tone, setTone] = useState<TrailerTone>('Epic');
-    const [visualStyle, setVisualStyle] = useState<TrailerVisualStyle>('Cinematic');
+    const [visualStyle, setVisualStyle] = useState<string>(styles[0].value);
     const [sceneCount, setSceneCount] = useState(12);
     const [trailerScript, setTrailerScript] = useState<StoryScene[] | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [noVoiceover, setNoVoiceover] = useState(false);
+    const [noSubtitle, setNoSubtitle] = useState(false);
+    const [focusOnCharacters, setFocusOnCharacters] = useState(false);
+
 
     const inputFieldClasses = "bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-cyan-500 focus:border-cyan-500 block w-full p-2.5 placeholder-gray-400";
 
@@ -63,6 +67,9 @@ const MovieTrailerGenerator: React.FC = () => {
                 tone,
                 visualStyle,
                 sceneCount,
+                noVoiceover,
+                noSubtitle,
+                focusOnCharacters,
             });
             setTrailerScript(result);
         } catch (err) {
@@ -71,17 +78,20 @@ const MovieTrailerGenerator: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [title, synopsis, genre, tone, visualStyle, sceneCount]);
+    }, [title, synopsis, genre, tone, visualStyle, sceneCount, noVoiceover, noSubtitle, focusOnCharacters]);
     
     const handleClear = () => {
         setTitle('');
         setSynopsis('');
         setGenre('Action');
         setTone('Epic');
-        setVisualStyle('Cinematic');
+        setVisualStyle(styles[0].value);
         setSceneCount(12);
         setTrailerScript(null);
         setError(null);
+        setNoVoiceover(false);
+        setNoSubtitle(false);
+        setFocusOnCharacters(false);
     };
 
     const renderSelector = <T extends string>(
@@ -131,7 +141,7 @@ const MovieTrailerGenerator: React.FC = () => {
                         id="synopsis"
                         value={synopsis}
                         onChange={(e) => setSynopsis(e.target.value)}
-                        placeholder="Describe the plot of your movie. What is it about? Who are the main characters? What is the central conflict?"
+                        placeholder={"Describe the plot of your movie. What is it about? Who are the main characters? What is the central conflict?"}
                         className={`${inputFieldClasses} h-32 resize-y`}
                         disabled={isLoading}
                     />
@@ -139,22 +149,86 @@ const MovieTrailerGenerator: React.FC = () => {
                 
                  <div>
                     <label htmlFor="scenes" className="block text-sm font-semibold mb-2 text-gray-300">Number of Scenes</label>
-                    <input
-                        type="number"
-                        id="scenes"
-                        value={sceneCount}
-                        onChange={handleSceneCountChange}
-                        className={inputFieldClasses}
-                        min="1"
-                        max="100"
-                        disabled={isLoading}
-                    />
+                    <div className="relative flex items-center">
+                        <button
+                            onClick={() => setSceneCount(prev => Math.max(1, prev - 1))}
+                            className="absolute left-0 top-0 bottom-0 px-3 text-lg font-bold text-gray-400 hover:text-white bg-gray-700/50 rounded-l-lg disabled:opacity-50"
+                            aria-label="Decrease scene count"
+                            disabled={isLoading}
+                        >
+                            -
+                        </button>
+                        <input
+                            type="number"
+                            id="scenes"
+                            value={sceneCount}
+                            onChange={handleSceneCountChange}
+                            className={`${inputFieldClasses} text-center w-full pl-10 pr-10`}
+                            min="1"
+                            max="100"
+                            disabled={isLoading}
+                        />
+                        <button
+                            onClick={() => setSceneCount(prev => Math.min(100, prev + 1))}
+                            className="absolute right-0 top-0 bottom-0 px-3 text-lg font-bold text-gray-400 hover:text-white bg-gray-700/50 rounded-r-lg disabled:opacity-50"
+                            aria-label="Increase scene count"
+                            disabled={isLoading}
+                        >
+                            +
+                        </button>
+                    </div>
                      <p className="mt-2 text-xs text-gray-400">The trailer will be broken down into this many scenes. Max 100.</p>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-semibold mb-2 text-gray-300">Advanced Options</label>
+                    <div className="space-y-3 p-4 bg-gray-700/50 rounded-lg">
+                        <div className="relative flex items-start">
+                            <div className="flex h-6 items-center">
+                                <input id="noVoiceover" type="checkbox" checked={noVoiceover} onChange={(e) => setNoVoiceover(e.target.checked)} disabled={isLoading} className="h-4 w-4 rounded border-gray-500 bg-gray-600 text-purple-500 focus:ring-purple-600"/>
+                            </div>
+                            <div className="ml-3 text-sm">
+                                <label htmlFor="noVoiceover" className="font-medium text-gray-300">No Voiceover</label>
+                                <p className="text-gray-400">Generate a trailer without narrator voiceover.</p>
+                            </div>
+                        </div>
+                        <div className="relative flex items-start">
+                            <div className="flex h-6 items-center">
+                                <input id="noSubtitle" type="checkbox" checked={noSubtitle} onChange={(e) => setNoSubtitle(e.target.checked)} disabled={isLoading} className="h-4 w-4 rounded border-gray-500 bg-gray-600 text-purple-500 focus:ring-purple-600"/>
+                            </div>
+                            <div className="ml-3 text-sm">
+                                <label htmlFor="noSubtitle" className="font-medium text-gray-300">No On-Screen Text</label>
+                                <p className="text-gray-400">Generate a trailer without any text overlays (subtitles).</p>
+                            </div>
+                        </div>
+                        <div className="relative flex items-start">
+                            <div className="flex h-6 items-center">
+                                <input id="focusOnCharacters" type="checkbox" checked={focusOnCharacters} onChange={(e) => setFocusOnCharacters(e.target.checked)} disabled={isLoading} className="h-4 w-4 rounded border-gray-500 bg-gray-600 text-purple-500 focus:ring-purple-600"/>
+                            </div>
+                            <div className="ml-3 text-sm">
+                                <label htmlFor="focusOnCharacters" className="font-medium text-gray-300">Focus on Characters</label>
+                                <p className="text-gray-400">Prioritize clear, consistent character faces in every shot.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {renderSelector<TrailerGenre>('Genre', ['Action', 'Comedy', 'Drama', 'Sci-Fi', 'Horror', 'Thriller', 'Romance', 'Fantasy'], genre, setGenre)}
                 {renderSelector<TrailerTone>('Tone', ['Epic', 'Humorous', 'Tense', 'Emotional', 'Mysterious', 'Inspiring'], tone, setTone)}
-                {renderSelector<TrailerVisualStyle>('Visual Style', ['Cinematic', 'Gritty Realism', 'Stylized & Vibrant', 'Vintage Film', 'Found Footage', '80s Retro'], visualStyle, setVisualStyle)}
+                <div>
+                    <label className="block text-sm font-semibold mb-2 text-gray-300">Visual Style</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {styles.map(styleOpt => (
+                            <button 
+                                key={styleOpt.name} 
+                                onClick={() => setVisualStyle(styleOpt.value)} 
+                                disabled={isLoading}
+                                className={`px-3 py-2 text-sm font-semibold rounded-md transition w-full disabled:opacity-50 ${visualStyle === styleOpt.value ? 'bg-purple-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>
+                                {styleOpt.name}
+                            </button>
+                        ))}
+                    </div>
+                </div>
 
 
                 <button
